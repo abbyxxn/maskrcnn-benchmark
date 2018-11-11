@@ -3,6 +3,7 @@ import torch
 
 from .box_head.box_head import build_roi_box_head
 from .mask_head.mask_head import build_roi_mask_head
+from .box3d_head.box3d_head import build_roi_box3d_head
 
 
 class CombinedROIHeads(torch.nn.ModuleDict):
@@ -35,6 +36,11 @@ class CombinedROIHeads(torch.nn.ModuleDict):
             # this makes the API consistent during training and testing
             x, detections, loss_mask = self.mask(mask_features, detections, targets)
             losses.update(loss_mask)
+        if self.cfg.MODEL.BOX3D_ON:
+            # TODO pointcloud concat.
+            # x does nothing outside.
+            x, detections_3d, loss_box3d = self.mask(features, detections, targets)
+            losses.update(loss_box3d)
         return x, detections, losses
 
 
@@ -46,6 +52,9 @@ def build_roi_heads(cfg):
         roi_heads.append(("box", build_roi_box_head(cfg)))
     if cfg.MODEL.MASK_ON:
         roi_heads.append(("mask", build_roi_mask_head(cfg)))
+
+    #if cfg.MODEL.BOX3D_ON:
+        #roi_heads.append(("box3d", build_roi_box3d_head(cfg)))
 
     # combine individual heads in a single module
     if roi_heads:

@@ -5,14 +5,25 @@ import os
 
 
 class DatasetCatalog(object):
-    DATA_DIR = "datasets"
+    DATA_DIR = "/home/abby/Repositories/maskrcnn-benchmark/datasets"
 
     DATASETS = {
+        "kitti_fine_instanceonly_seg_train": (
+            "kitti/images",
+            "kitti/annotations/instancesonly_filtered_gtFine_train.json",
+        ),
+        "kitti_fine_instanceonly_seg_val": (
+            "kitti/images",
+            "kitti/annotations/instancesonly_filtered_gtFine_val.json",
+        ),
         "coco_2014_train": (
             "coco/train2014",
             "coco/annotations/instances_train2014.json",
         ),
-        "coco_2014_val": ("coco/val2014", "coco/annotations/instances_val2014.json"),
+        "coco_2014_val": (
+            "coco/val2014",
+            "coco/annotations/instances_val2014.json",
+        ),
         "coco_2014_minival": (
             "coco/val2014",
             "coco/annotations/instances_minival2014.json",
@@ -21,11 +32,46 @@ class DatasetCatalog(object):
             "coco/val2014",
             "coco/annotations/instances_valminusminival2014.json",
         ),
+        "coco_2017_train": (
+            "coco/train2017",
+            "coco/annotations/instances_train2017.json",
+        ),
+        "coco_2017_val": (
+            "coco/val2017",
+            "coco/annotations/instances_val2017.json",
+        ),
+        "cityscapes_fine_instanceonly_seg_train": (
+            "cityscapes/images",
+            "cityscapes/annotations/instancesonly_filtered_gtFine_train.json",
+        ),
+        "cityscapes_fine_instanceonly_seg_val": (
+            "cityscapes/images",
+            "cityscapes/annotations/instancesonly_filtered_gtFine_val.json",
+        ),
+        "kitti_3d_train": (
+            "kitti/object",
+            "kitti/object/kitti_train_gt_roidb.pkl",
+        ),
+        "kitti_3d_val": (
+            "kitti/object",
+            "kitti/object/kitti_validation_gt_roidb.pkl",
+        ),
     }
 
     @staticmethod
     def get(name):
-        if "coco" in name:
+        if "kitti" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                root=os.path.join(data_dir, attrs[0]),
+                ann_file=os.path.join(data_dir, attrs[1]),
+            )
+            return dict(
+                factory="KITTIDataset",
+                args=args,
+            )
+        elif "coco" in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(

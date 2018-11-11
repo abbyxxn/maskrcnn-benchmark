@@ -40,13 +40,16 @@ def prepare_for_coco_detection(predictions, dataset):
     # assert isinstance(dataset, COCODataset)
     coco_results = []
     for image_id, prediction in enumerate(predictions):
-        original_id = dataset.id_to_img_map[image_id]
+        # TODO image_id is what
+        # original_id = dataset.id_to_img_map[image_id]
         if len(prediction) == 0:
             continue
 
         # TODO replace with get_img_info?
-        image_width = dataset.coco.imgs[original_id]["width"]
-        image_height = dataset.coco.imgs[original_id]["height"]
+        # image_width = dataset.coco.imgs[original_id]["width"]
+        # image_height = dataset.coco.imgs[original_id]["height"]
+        image_width = dataset.get_img_info(image_id)["width"]
+        image_height = dataset.get_img_info(image_id)["height"]
         prediction = prediction.resize((image_width, image_height))
         prediction = prediction.convert("xywh")
 
@@ -54,7 +57,9 @@ def prepare_for_coco_detection(predictions, dataset):
         scores = prediction.get_field("scores").tolist()
         labels = prediction.get_field("labels").tolist()
 
-        mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
+        # mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
+        mapped_labels = labels
+
 
         coco_results.extend(
             [

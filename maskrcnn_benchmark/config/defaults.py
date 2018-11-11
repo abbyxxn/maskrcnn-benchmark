@@ -61,6 +61,13 @@ _C.DATASETS.TRAIN = ()
 # List of the dataset names for testing, as present in paths_catalog.py
 _C.DATASETS.TEST = ()
 
+# Use by kitti load
+_C.DATASETS.USE_RGBD = True
+_C.DATASETS.USE_RGBL = False
+_C.DATASETS.DISPARITY_DIR_NAME = 'disparity'
+_C.DATASETS.DATASET_CATEGORIES = []
+_C.DATASETS.LIDAR_COORD = []
+
 # -----------------------------------------------------------------------------
 # DataLoader
 # -----------------------------------------------------------------------------
@@ -177,7 +184,7 @@ _C.MODEL.ROI_BOX_HEAD.PREDICTOR = "FastRCNNPredictor"
 _C.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION = 14
 _C.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO = 0
 _C.MODEL.ROI_BOX_HEAD.POOLER_SCALES = (1.0 / 16,)
-_C.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 81
+_C.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 9
 # Hidden layer dimension when using an MLP for the RoI box head
 _C.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM = 1024
 
@@ -264,6 +271,6 @@ _C.TEST.IMS_PER_BATCH = 8
 # ---------------------------------------------------------------------------- #
 # Misc options
 # ---------------------------------------------------------------------------- #
-_C.OUTPUT_DIR = "."
+_C.OUTPUT_DIR = "/home/abby/Repositories/maskrcnn-benchmark/output"
 
-_C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")
+_C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog_kitti_3d.py")
