@@ -92,7 +92,7 @@ class Polygons(object):
     def crop(self, box):
         w, h = box[2] - box[0], box[3] - box[1]
 
-        # TODO chck if necessary
+        # TODO check if necessary
         w = max(w, 1)
         h = max(h, 1)
 

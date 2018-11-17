@@ -21,9 +21,11 @@ class Box3List(object):
     def __init__(self, bbox_3d, image_size, mode="ry-lhwxyz"):
         device = bbox_3d.device if isinstance(bbox_3d, torch.Tensor) else torch.device("cpu")
         bbox_3d = torch.as_tensor(bbox_3d, dtype=torch.float32, device=device)
+        if bbox_3d.ndimension() == 1:
+            bbox_3d = bbox_3d.unsqueeze(0)
         if bbox_3d.ndimension() != 2:
             raise ValueError(
-                "bbox_3d should have 2 dimensions, got {}".format(bbox_3d.ndimension())
+                "bbox_3d should have 2 dimensions, got {} {}".format(bbox_3d.ndimension(), bbox_3d.size())
             )
         if bbox_3d.size(-1) != 7:
             raise ValueError(
@@ -174,6 +176,8 @@ class Box3List(object):
     def __len__(self):
         return self.bbox_3d.shape[0]
 
+    # TODO resize, crop, clip_to_image,
+
     def clip_to_image(self, remove_empty=True):
         TO_REMOVE = 1
         self.bbox_3d[:, 0].clamp_(min=0, max=self.size[0] - TO_REMOVE)
@@ -231,6 +235,14 @@ class BoundingBox3DRotation(object):
         self.rotation = rotation
         self.size = size
         self.mode = mode
+
+    def __repr__(self):
+        s = self.__class__.__name__ + "("
+        s += "num_boxes3d={}, ".format(len(self))
+        s += "image_width={}, ".format(self.size[0])
+        s += "image_height={}, ".format(self.size[1])
+        s += "mode={})".format(self.mode)
+        return s
 
 
 if __name__ == "__main__":
