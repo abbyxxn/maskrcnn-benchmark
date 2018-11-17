@@ -11,7 +11,7 @@ import torch.utils.data as data
 from PIL import Image
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
-from maskrcnn_benchmark.structures.bounding_box_3D import Box3List
+from maskrcnn_benchmark.structures.bounding_box_3d import Box3List
 
 
 class KITTIDataset(data.Dataset):
@@ -20,6 +20,7 @@ class KITTIDataset(data.Dataset):
         self.image_index, self.label_list, self.boxes_list, self.boxes_3d_list, self.alphas_list = self.get_pkl_element(
             ann_file)
         self.typical_dimension = self.get_typical_dimension(self.label_list, self.boxes_3d_list)
+        self.boxes_3d_list = self.boxes3d_encode(self.boxes_3d_list, self.label_list)
         number_image = len(self.image_index)
         self.image_lists = []
         self.calib_lists = []
@@ -46,6 +47,7 @@ class KITTIDataset(data.Dataset):
         target.add_field("labels", classes)
 
         boxes_3d = self.boxes_3d_list[idx]
+        boxes_3d = torch.as_tensor(boxes_3d).reshape(-1, 7)
         boxes_3d = Box3List(boxes_3d, img.size)
         target.add_field("boxes_3d", boxes_3d)
 
@@ -76,7 +78,8 @@ class KITTIDataset(data.Dataset):
         width, height = img.size
         return {"height": height, "width": width}
 
-    def get_pkl_element(self, ann_file):
+    @staticmethod
+    def get_pkl_element(ann_file):
         '''
         labels mapping:
         1 : person_sitting, pedstrian
@@ -122,3 +125,42 @@ class KITTIDataset(data.Dataset):
             result[k] = v / categories[k]
 
         return result #lhw
+
+    def boxes3d_encode(self, boxes_3d_list, label_list):
+        """
+        Encode a set of proposals with respect to some
+        reference boxes
+
+        Arguments:
+            reference_boxes (Tensor): reference boxes
+            proposals (Tensor): boxes to be encoded
+        """
+        for index, label in label_list.items():
+            for i, boxes_3d in enumerate(boxes_3d_list[index]):
+                boxes_3d[1:4] = boxes_3d[1:4] - self.typical_dimension[label[i]]
+        return boxes_3d_list
+
+        #
+        # orientations = []
+        # confidences = []
+        # for box3d, label in zip(bounding_box_3d, labels):
+        #     # box3d[:, 1:4] = box3d[:, 1:4] - TYPICAL_DIMENSION[label]
+        #     box3d[:, 1:4] = box3d[:, 1:4] - 0.1
+        #     box3d[:, 0] = box3d[:, 0] + np.pi / 2
+        #     for i, r in enumerate(box3d[:, 0]):
+        #         if r < 0:
+        #             box3d[i, 0] = box3d[i, 0] + 2. * np.pi
+        #     box3d[:, 0] = box3d[:, 0] - int(box3d[:, 0] / (2. * np.pi)) * (2. * np.pi)
+        #     for i, r in enumerate(box3d[:, 0]):
+        #         orientation = np.zeros((self.num_bins, 2))
+        #         confidence = np.zeros(self.num_bins)
+        #         anchors = self.compute_anchors(r)
+        #         for anchor in anchors:
+        #             orientation[anchor[0]] = np.array([np.cos(anchor[1]), np.sin(anchor[1])])
+        #             confidence[anchor[0]] = 1.
+        #         confidence = confidence / np.sum(confidence)
+        #         orientations.append(orientation)
+        #         confidences.append(confidence)
+        # if len(bounding_box_3d) == 0:
+        #     return torch.empty(0, dtype=torch.float32)
+        # return confidences, orientations, bounding_box_3d
