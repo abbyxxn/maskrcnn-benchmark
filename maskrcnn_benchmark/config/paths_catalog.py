@@ -60,7 +60,7 @@ class DatasetCatalog(object):
 
     @staticmethod
     def get(name):
-        if "kitti" in name:
+        if "kitti" and "3d" in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(
@@ -71,7 +71,8 @@ class DatasetCatalog(object):
                 factory="KITTIDataset",
                 args=args,
             )
-        elif "coco" in name:
+        else:
+        #elif "coco" in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(

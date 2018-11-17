@@ -23,6 +23,10 @@ _C = CN()
 _C.MODEL = CN()
 _C.MODEL.RPN_ONLY = False
 _C.MODEL.MASK_ON = False
+_C.MODEL.BOX3D_ON = False
+_C.MODEL.BOX3D_DIMENSION_ON = False
+_C.MODEL.BOX3D_ROTATION_CONFIDENCES_ON = False
+_C.MODEL.BOX3D_ROTATION_REGRESSION_ON = False
 _C.MODEL.DEVICE = "cuda"
 _C.MODEL.META_ARCHITECTURE = "GeneralizedRCNN"
 
@@ -200,6 +204,21 @@ _C.MODEL.ROI_MASK_HEAD.CONV_LAYERS = (256, 256, 256, 256)
 _C.MODEL.ROI_MASK_HEAD.RESOLUTION = 14
 _C.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR = True
 
+_C.MODEL.ROI_BOX3D_HEAD = CN()
+_C.MODEL.ROI_BOX3D_HEAD.FEATURE_EXTRACTOR = "ResNet50Conv5ROIFeatureExtractor"
+_C.MODEL.ROI_BOX3D_HEAD.SHARE_BOX_FEATURE_EXTRACTOR = True
+_C.MODEL.ROI_BOX3D_HEAD.PREDICTOR_DIMENSION = "FastRCNNPredictor"
+_C.MODEL.ROI_BOX3D_HEAD.PREDICTOR_ROTATION_CONFIDENCES = "FastRCNNPredictor"
+_C.MODEL.ROI_BOX3D_HEAD.PREDICTOR_ROTATION_ANGLE_SIN_ADD_COS = "FastRCNNPredictor"
+_C.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION = 14
+_C.MODEL.ROI_BOX3D_HEAD.POOLER_SAMPLING_RATIO = 0
+_C.MODEL.ROI_BOX3D_HEAD.POOLER_SCALES = (1.0 / 16,)
+_C.MODEL.ROI_BOX3D_HEAD.PREDICTORS_DIMENSION_HEAD_DIM = 512
+_C.MODEL.ROI_BOX3D_HEAD.PREDICTORS_ROTATION_CONFIDENCES_HEAD_DIM = 256
+_C.MODEL.ROI_BOX3D_HEAD.PREDICTORS_ROTATION_REGRESSION_HEAD_DIM = 256
+_C.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN = 2
+_C.MODEL.ROI_BOX3D_HEAD.ROTATION_OVERLAP = 0.1
+
 # ---------------------------------------------------------------------------- #
 # ResNe[X]t options (ResNets = {ResNet, ResNeXt}
 # Note that parts of a resnet may be used for both the backbone and the head
@@ -273,4 +292,4 @@ _C.TEST.IMS_PER_BATCH = 8
 # ---------------------------------------------------------------------------- #
 _C.OUTPUT_DIR = "/home/abby/Repositories/maskrcnn-benchmark/output"
 
-_C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog_kitti_3d.py")
+_C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")
