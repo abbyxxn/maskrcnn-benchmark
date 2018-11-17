@@ -28,7 +28,7 @@ MODEL:
     POOLER_SAMPLING_RATIO: 2
     RESOLUTION: 28
     SHARE_BOX_FEATURE_EXTRACTOR: False
-  MASK_ON: False
+  MASK_ON: True
 DATASETS:
   TRAIN: ("kitti_fine_instanceonly_seg_train",)
   TEST: ("kitti_fine_instanceonly_seg_val",)
