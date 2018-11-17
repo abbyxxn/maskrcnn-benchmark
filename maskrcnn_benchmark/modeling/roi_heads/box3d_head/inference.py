@@ -136,7 +136,7 @@ class PostProcessor(nn.Module):
         return result
 
 
-def make_roi_box_post_processor(cfg):
+def make_roi_box3d_post_processor(cfg):
     use_fpn = cfg.MODEL.ROI_HEADS.USE_FPN
 
     bbox_reg_weights = cfg.MODEL.ROI_HEADS.BBOX_REG_WEIGHTS

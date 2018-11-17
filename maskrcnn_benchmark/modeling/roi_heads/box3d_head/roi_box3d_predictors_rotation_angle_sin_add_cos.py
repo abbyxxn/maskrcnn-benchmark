@@ -33,30 +33,38 @@ class FastRCNNPredictor(nn.Module):
 class FPNPredictor(nn.Module):
     def __init__(self, cfg):
         super(FPNPredictor, self).__init__()
-        num_classes = cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES
-        representation_size = cfg.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM
+        self.num_bins = cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN
+        # TODO check MODEL.BACKBONE.OUT_CHANNELS = 256, but multibin need output 7*7*512
+        input_size = cfg.MODEL.BACKBONE.OUT_CHANNELS * cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2
+        representation_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_ROTATION_REGRESSION_HEAD_DIM
+        self.fc6 = nn.Linear(input_size, representation_size)
+        self.lrelu = nn.LeakyReLU(0.1)
+        self.dropout = nn.Dropout(p=0.5)
+        for l in [self.fc6, ]:
+            nn.init.kaiming_uniform_(l.weight, a=1)
+            nn.init.constant_(l.bias, 0)
 
-        self.cls_score = nn.Linear(representation_size, num_classes)
-        self.bbox_pred = nn.Linear(representation_size, num_classes * 4)
-
-        nn.init.normal_(self.cls_score.weight, std=0.01)
-        nn.init.normal_(self.bbox_pred.weight, std=0.001)
-        for l in [self.cls_score, self.bbox_pred]:
+        self.bbox3d_rotation_regression_pred = nn.Linear(representation_size, self.num_bins*2)
+        nn.init.normal_(self.bbox3d_rotation_regression_pred.weight, std=0.001)
+        for l in [self.bbox3d_rotation_regression_pred, ]:
             nn.init.constant_(l.bias, 0)
 
     def forward(self, x):
-        scores = self.cls_score(x)
-        bbox_deltas = self.bbox_pred(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc6(x)
+        x = self.lrelu(x)
+        x = self.dropout(x)
+        bbox3d_rotation_regression_deltas = self.bbox3d_rotation_regression_pred(x)
 
-        return scores, bbox_deltas
+        return bbox3d_rotation_regression_deltas
 
 
-_ROI_BOX_PREDICTOR = {
+_ROI_BOX3D_PREDICTOR = {
     "FastRCNNPredictor": FastRCNNPredictor,
     "FPNPredictor": FPNPredictor,
 }
 
 
-def make_roi_box_predictor(cfg):
-    func = _ROI_BOX_PREDICTOR[cfg.MODEL.ROI_BOX_HEAD.PREDICTOR]
+def make_roi_box3d_predictor_rotation_angle_sin_add_cos(cfg):
+    func = _ROI_BOX3D_PREDICTOR[cfg.MODEL.ROI_BOX3D_HEAD.PREDICTOR_ROTATION_ANGLE_SIN_ADD_COS]
     return func(cfg)

@@ -4,6 +4,7 @@ from torch.nn import functional as F
 
 from maskrcnn_benchmark.modeling.backbone import resnet
 from maskrcnn_benchmark.modeling.poolers import Pooler
+from maskrcnn_benchmark.layers import Conv2d
 
 
 class ResNet50Conv5ROIFeatureExtractor(nn.Module):
@@ -38,6 +39,7 @@ class ResNet50Conv5ROIFeatureExtractor(nn.Module):
         x = self.head(x)
         return x
 
+# TODO change ResNet50Conv5ROIFeatureExtractor for box3d_feature_extractors
 
 class FPN2MLPFeatureExtractor(nn.Module):
     """
@@ -47,42 +49,29 @@ class FPN2MLPFeatureExtractor(nn.Module):
     def __init__(self, cfg):
         super(FPN2MLPFeatureExtractor, self).__init__()
 
-        resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
-        scales = cfg.MODEL.ROI_BOX_HEAD.POOLER_SCALES
-        sampling_ratio = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        resolution = cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION
+        scales = cfg.MODEL.ROI_BOX3D_HEAD.POOLER_SCALES
+        sampling_ratio = cfg.MODEL.ROI_BOX3D_HEAD.POOLER_SAMPLING_RATIO
         pooler = Pooler(
             output_size=(resolution, resolution),
             scales=scales,
             sampling_ratio=sampling_ratio,
         )
-        input_size = cfg.MODEL.BACKBONE.OUT_CHANNELS * resolution ** 2
-        representation_size = cfg.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM
         self.pooler = pooler
-        self.fc6 = nn.Linear(input_size, representation_size)
-        self.fc7 = nn.Linear(representation_size, representation_size)
-
-        for l in [self.fc6, self.fc7]:
-            # Caffe2 implementation uses XavierFill, which in fact
-            # corresponds to kaiming_uniform_ in PyTorch
-            nn.init.kaiming_uniform_(l.weight, a=1)
-            nn.init.constant_(l.bias, 0)
 
     def forward(self, x, proposals):
         x = self.pooler(x, proposals)
-        x = x.view(x.size(0), -1)
-
-        x = F.relu(self.fc6(x))
-        x = F.relu(self.fc7(x))
+        # x = x.view(x.size(0), -1)
 
         return x
 
 
-_ROI_BOX_FEATURE_EXTRACTORS = {
+_ROI_BOX3D_FEATURE_EXTRACTORS = {
     "ResNet50Conv5ROIFeatureExtractor": ResNet50Conv5ROIFeatureExtractor,
     "FPN2MLPFeatureExtractor": FPN2MLPFeatureExtractor,
 }
 
 
-def make_roi_box_feature_extractor(cfg):
-    func = _ROI_BOX_FEATURE_EXTRACTORS[cfg.MODEL.ROI_BOX_HEAD.FEATURE_EXTRACTOR]
+def make_roi_box3d_feature_extractor(cfg):
+    func = _ROI_BOX3D_FEATURE_EXTRACTORS[cfg.MODEL.ROI_BOX3D_HEAD.FEATURE_EXTRACTOR]
     return func(cfg)
