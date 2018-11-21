@@ -21,7 +21,7 @@ class FastRCNNLossComputation(object):
     Also supports FPN
     """
 
-    def __init__(self, proposal_matcher, orientation_coder, num_bins):
+    def __init__(self, proposal_matcher):
         """
         Arguments:
             proposal_matcher (Matcher)
@@ -29,16 +29,12 @@ class FastRCNNLossComputation(object):
             box_coder (BoxCoder)
         """
         self.proposal_matcher = proposal_matcher
-        self.orientation_coder = orientation_coder
-        self.num_bins = num_bins
-        self.confidence_loss = torch.nn.BCEWithLogitsLoss()
-        self.orientation_loss = OrientationLoss()
 
     def match_targets_to_proposals(self, proposal, target):
         match_quality_matrix = boxlist_iou(target, proposal)
         matched_idxs = self.proposal_matcher(match_quality_matrix)
         # Fast RCNN only need "labels" field for selecting the targets
-        target = target.copy_with_fields(["labels", "boxes_3d", "alphas"])
+        target = target.copy_with_fields(["labels", "depth"])
         # get the targets corresponding GT for each proposal
         # NB: need to clamp the indices because we can have a single
         # GT in the image, and matched_idxs can be -2, which goes
@@ -49,9 +45,10 @@ class FastRCNNLossComputation(object):
 
     def prepare_targets(self, proposals, targets):
         labels = []
-        boxes3d_targets = []
-        confidences = []
-        orientations = []
+        # boxes3d_targets = []
+        # confidences = []
+        # orientations = []
+        disparities = []
         for proposals_per_image, targets_per_image in zip(proposals, targets):
             matched_targets = self.match_targets_to_proposals(
                 proposals_per_image, targets_per_image
@@ -68,19 +65,19 @@ class FastRCNNLossComputation(object):
             # mask scores are only computed on positive samples
             positive_inds = torch.nonzero(labels_per_image > 0).squeeze(1)
 
-            bounding_box_3d = matched_targets.get_field("boxes_3d")
-            bounding_box_3d = bounding_box_3d[positive_inds]
+            # bounding_box_3d = matched_targets.get_field("boxes_3d")
+            # bounding_box_3d = bounding_box_3d[positive_inds]
 
-            alpha_orientation = matched_targets.get_field("alphas")
-            alpha_orientation = alpha_orientation[positive_inds]
+            disparity = matched_targets.get_field("depth")
+            disparity = disparity[positive_inds]
 
             positive_proposals = proposals_per_image[positive_inds]
 
-            assert bounding_box_3d.size == positive_proposals.size, "{}, {}".format(
-                bounding_box_3d, positive_proposals
-            )
+            # assert bounding_box_3d.size == positive_proposals.size, "{}, {}".format(
+            #     bounding_box_3d, positive_proposals
+            # )
 
-            confidences_per_image, orientations_per_image = self.orientation_coder.encode(alpha_orientation)
+            # confidences_per_image, orientations_per_image = self.orientation_coder.encode(alpha_orientation)
             # confidences_per_image, orientations_per_image, boxes3d_per_image = self.boxes3d_encode(
             #     bounding_box_3d.bbox_3d, positive_proposals.get_field("labels")
             # )
@@ -92,20 +89,19 @@ class FastRCNNLossComputation(object):
             # bounding_box_3d_box = torch.as_tensor(bounding_box_3d.bbox_3d, dtype=torch.float32)
             # confidences_per_image = torch.tensor(confidences_per_image, dtype=torch.float32)
             # orientations_per_image = torch.tensor(orientations_per_image, dtype=torch.float32)
-            confidences.append(confidences_per_image)
-            orientations.append(orientations_per_image)
+            # confidences.append(confidences_per_image)
+            # orientations.append(orientations_per_image)
             labels.append(labels_per_image)
-            boxes3d_targets.append(bounding_box_3d.bbox_3d)
+            disparities.append(disparity)
+            # boxes3d_targets.append(bounding_box_3d.bbox_3d)
 
-        return labels, boxes3d_targets, confidences, orientations
+        return labels, disparities
 
         # return labels, boxes3d_targets, confidences, orientations
 
     def __call__(self, proposals, box3d_dim_regression,
                  box3d_rotation_logits,
                  box3d_rotation_regression,
-                 box3d_localization_conv_regression,
-                 box3d_localization_pc_regression,
                  targets):
         """
         Computes the loss for Faster R-CNN.
@@ -151,17 +147,6 @@ class FastRCNNLossComputation(object):
         box3d_loss = box3d_loss / labels.numel()
         box3d_loss = box3d_loss / 10000
 
-        # device = box3d_localization_conv_regression.device
-        # boxes3d_targets = torch.as_tensor(boxes3d_targets, dtype=torch.float32, device=device)
-        box3d_localization_loss = smooth_l1_loss(
-            box3d_localization_conv_regression[:, map_inds] + box3d_localization_pc_regression[:, map_inds],
-            boxes3d_targets[:, 4:7],
-            size_average=False,
-            beta=1,
-        )
-        box3d_localization_loss = box3d_localization_loss / labels.numel()
-        box3d_localization_loss = box3d_localization_loss / 10000
-
 
         # box3d_rotation_logits = torch.as_tensor(box3d_rotation_logits, dtype=torch.float32, device=device)
         # box3d_rotation_logits = cat(box3d_rotation_logits, dim=0)
@@ -187,32 +172,18 @@ class FastRCNNLossComputation(object):
         # rotation_confidence_loss = torch.as_tensor(rotation_confidence_loss, dtype=torch.float32, device=device)
         # rotation_regression_loss = torch.as_tensor(rotation_regression_loss, dtype=torch.float32, device=device)
         # TODO check classification need be divide by labels_pos.numel()
-        return box3d_loss, rotation_confidence_loss, rotation_regression_loss, box3d_localization_loss
+        return box3d_loss, rotation_confidence_loss, rotation_regression_loss
 
 
-class OrientationLoss(nn.Module):
-    def __init__(self):
-        super(OrientationLoss, self).__init__()
-        return
-
-    def forward(self, y_true, y_pred):
-        device = y_true.device
-        anchors = torch.sum(torch.mul(y_true, y_true), dim=2)
-        anchors = anchors > 0.5
-        anchors = torch.sum(torch.as_tensor(anchors, dtype=torch.float32, device=device), dim=1)
-
-        loss = (y_true[:, :, 0] * y_pred[:, :, 0] + y_true[:, :, 1] * y_pred[:, :, 1])
-        loss = torch.sum((2 - 2 * torch.mean(loss, dim=0))) / anchors
-        return torch.mean(loss)
 
 
-def make_roi_box3d_loss_evaluator(cfg):
+
+def make_roi_box3d_localization_loss_evaluator(cfg):
     matcher = Matcher(
         cfg.MODEL.ROI_HEADS.FG_IOU_THRESHOLD,
         cfg.MODEL.ROI_HEADS.BG_IOU_THRESHOLD,
         allow_low_quality_matches=False,
     )
-    orientation_coder = OrientationCoder(cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN, cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_OVERLAP)
-    loss_evaluator = FastRCNNLossComputation(matcher,
-                                             orientation_coder, cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN)
+    # orientation_coder = OrientationCoder(cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN, cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_OVERLAP)
+    loss_evaluator = FastRCNNLossComputation(matcher)
     return loss_evaluator

@@ -12,6 +12,7 @@ from PIL import Image
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.bounding_box_3d import Box3List
+import numpy as np
 
 
 class KITTIDataset(data.Dataset):
@@ -28,7 +29,7 @@ class KITTIDataset(data.Dataset):
         for i in range(number_image):
             self.image_lists.append(root + '/training' + '/image_2/' + self.image_index[i] + "_01.png")
             self.calib_lists.append(root + '/training' + '/calib/' + self.image_index[i] + ".txt")
-            self.disparity_list.append(root + '/training' + '/disparity/' + self.image_index[i] + "_01.npz")
+            self.disparity_list.append(root + '/training' + '/disparity/' + self.image_index[i] + "_01.png.npz")
         self.transforms = transforms
         self.id_to_img_map = self.image_index
 
@@ -53,10 +54,29 @@ class KITTIDataset(data.Dataset):
 
         alphas = self.alphas_list[idx]
         alphas = torch.tensor(alphas)
+        num_instances = alphas.shape[0]
         target.add_field("alphas", alphas)
 
+        # depth = self.disparity_list[idx]
+        # depths = []
+        # for i in range(num_instances):
+        #     depths.append(depth)
+        # target.add_field("depth", depths)
+
+
+        d = np.load(self.disparity_list[idx])
+        depth = np.transpose(d['depths'])
+        assert depth.shape == img.size, "{}, {}".format(
+            depth.shape, img.size
+            )
+        depths = []
+        for i in range(num_instances):
+            depths.append(depth)
+        depths = torch.tensor(depths)
+        target.add_field("depth", depths)
+
         # TODO clip
-        # target = target.clip_to_image(remove_empty=True)
+        target = target.clip_to_image(remove_empty=True)
         # dummy target
         # w, h = img.size
         # target = BoxList([[0, 0, w, h]], img.size, mode="xyxy")
@@ -124,7 +144,7 @@ class KITTIDataset(data.Dataset):
         for k, v in typical_dimension.items():
             result[k] = v / categories[k]
 
-        return result #lhw
+        return result  # lhw
 
     def boxes3d_encode(self, boxes_3d_list, label_list):
         """
@@ -137,7 +157,14 @@ class KITTIDataset(data.Dataset):
         """
         for index, label in label_list.items():
             for i, boxes_3d in enumerate(boxes_3d_list[index]):
-                boxes_3d[1:4] = boxes_3d[1:4] - self.typical_dimension[label[i]]
+                boxes_3d[1:4] = boxes_3d[1:4] - self.typical_dimension[label[i]] + 1
+                boxes_3d[4:] = boxes_3d[4:] - self.typical_dimension[label[i]] + 1
+                # if (boxes_3d[1] >= 3000):
+                #     boxes_3d[1] = 0
+                # if (boxes_3d[2] >= 3000):
+                #     boxes_3d[2] = 0
+                # if (boxes_3d[3] >= 3000):
+                #     boxes_3d[3] = 0
         return boxes_3d_list
 
         #

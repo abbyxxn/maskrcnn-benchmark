@@ -5,11 +5,17 @@ from torch import nn
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 
 from .roi_box3d_feature_extractors import make_roi_box3d_feature_extractor
+from .roi_pc_feature_extractors import make_roi_pc_feature_extractor
+from .roi_box3d_predictors import make_roi_box3d_predictor
 from .roi_box3d_predictors_dimension import make_roi_box3d_predictor_dimension
 from .roi_box3d_predictors_rotation_confidences import make_roi_box3d_predictor_rotation_confidences
 from .roi_box3d_predictors_rotation_angle_sin_add_cos import make_roi_box3d_predictor_rotation_angle_sin_add_cos
+from .roi_box3d_predictors_localization_conv import make_roi_box3d_predictor_localization_conv
+from .roi_box3d_predictors_localization_pc import  make_roi_box3d_predictor_localization_pc
 from .inference import make_roi_box3d_post_processor
 from .loss import make_roi_box3d_loss_evaluator
+from .localization_loss import make_roi_box3d_localization_loss_evaluator
+
 
 
 def keep_only_positive_boxes(boxes):
@@ -44,11 +50,16 @@ class ROIBox3DHead(torch.nn.Module):
         super(ROIBox3DHead, self).__init__()
         self.cfg = cfg.clone()
         self.feature_extractor = make_roi_box3d_feature_extractor(cfg)
+        self.pc_feature_extractor = make_roi_pc_feature_extractor(cfg)
+        self.predictor = make_roi_box3d_predictor(cfg)
         self.predictor_dimension = make_roi_box3d_predictor_dimension(cfg)
         self.predictor_rotation_confidences = make_roi_box3d_predictor_rotation_confidences(cfg)
         self.predictor_rotation_angle_sin_add_cos = make_roi_box3d_predictor_rotation_angle_sin_add_cos(cfg)
+        self.predictor_localization_conv = make_roi_box3d_predictor_localization_conv(cfg)
+        self.predictor_localization_pc = make_roi_box3d_predictor_localization_pc(cfg)
         self.post_processor = make_roi_box3d_post_processor(cfg)
         self.loss_evaluator = make_roi_box3d_loss_evaluator(cfg)
+        self.localization_loss_evaluator = make_roi_box3d_localization_loss_evaluator(cfg)
 
     def forward(self, features, proposals, targets=None):
         """
@@ -76,19 +87,37 @@ class ROIBox3DHead(torch.nn.Module):
         else:
             x = self.feature_extractor(features, proposals)
 
+        pc_features = []
+        for proposal_per_image, target_per_image in zip(proposals, targets):
+            pc_feature = self.pc_feature_extractor(proposal_per_image, target_per_image)
+            pc_features.append(pc_feature)
+
+        pc_features = torch.cat(pc_features)
+        fusion_feature = torch.cat((x, pc_features), 1)
+        # TODO check cat right
+
+        roi_fusion_feature = self.predictor(fusion_feature)
+
         box3d_dim_regression = None
         box3d_rotation_logits = None
         box3d_rotation_regression = None
+        box3d_localization_conv_regression = None
+        box3d_localization_pc_regression = None
 
         if self.cfg.MODEL.BOX3D_DIMENSION_ON:
-            box3d_dim_regression = self.predictor_dimension(x)
+            box3d_dim_regression = self.predictor_dimension(roi_fusion_feature)
 
         if self.cfg.MODEL.BOX3D_ROTATION_CONFIDENCES_ON:
-            box3d_rotation_logits = self.predictor_rotation_confidences(x)
+            box3d_rotation_logits = self.predictor_rotation_confidences(roi_fusion_feature)
 
         if self.cfg.MODEL.BOX3D_ROTATION_REGRESSION_ON:
-            box3d_rotation_regression = self.predictor_rotation_angle_sin_add_cos(x)
+            box3d_rotation_regression = self.predictor_rotation_angle_sin_add_cos(roi_fusion_feature)
         # TODO optimizer split train box3d head
+
+        if self.cfg.MODEL.BOX3D_LOCALIZATION_ON:
+            box3d_localization_conv_regression = self.predictor_localization_conv(roi_fusion_feature)
+            box3d_localization_pc_regression = self.predictor_localization_pc(pc_features)
+
 
         if not self.training:
             post_processor_list = []
@@ -98,15 +127,24 @@ class ROIBox3DHead(torch.nn.Module):
                 post_processor_list.append(box3d_rotation_logits)
             if self.cfg.MODEL.BOX3D_ROTATION_REGRESSION_ON:
                 post_processor_list.append(box3d_rotation_regression)
+            if self.cfg.MODEL.BOX3D_LOCALIZATION_ON:
+                post_processor_list.append(box3d_localization_conv_regression)
+                post_processor_list.append(box3d_localization_pc_regression)
             post_processor_tuple = tuple(post_processor_list)
             result = self.post_processor(post_processor_tuple, proposals)
             return x, result, {}
 
-        loss_box3d_dim, loss_box3d_rot_conf, loss_box3d_rot_reg = self.loss_evaluator(proposals,
+        loss_box3d_dim, loss_box3d_rot_conf, loss_box3d_rot_reg, loss_box3d_localization = self.loss_evaluator(proposals,
                                                     box3d_dim_regression=box3d_dim_regression,
                                                     box3d_rotation_logits=box3d_rotation_logits,
                                                     box3d_rotation_regression=box3d_rotation_regression,
+                                                    box3d_localization_conv_regression=box3d_localization_conv_regression,
+                                                    box3d_localization_pc_regression=box3d_localization_pc_regression,
                                                     targets=targets)
+        # loss_box3d_localization = self.localization_loss_evaluator(proposals,
+        #                                                            box3d_localization_conv_regression=box3d_localization_conv_regression,
+        #                                                            box3d_localization_pc_regression=box3d_localization_pc_regression,
+        #                                                            targets=targets)
 
         loss_dict = {}
         if self.cfg.MODEL.BOX3D_DIMENSION_ON:
@@ -115,12 +153,10 @@ class ROIBox3DHead(torch.nn.Module):
             loss_dict["loss_box3d_rot_conf"] = loss_box3d_rot_conf
         if self.cfg.MODEL.BOX3D_ROTATION_REGRESSION_ON:
             loss_dict["loss_box3d_rot_reg"] = loss_box3d_rot_reg
+        if self.cfg.MODEL.BOX3D_LOCALIZATION_ON:
+            loss_dict["loss_box3d_loc_reg"] = loss_box3d_localization
 
-        return (
-            x,
-            all_proposals,
-            loss_dict,
-        )
+        return x, all_proposals, loss_dict
 
 
 def build_roi_box3d_head(cfg):

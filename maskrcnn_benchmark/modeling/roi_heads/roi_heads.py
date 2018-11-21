@@ -44,12 +44,7 @@ class CombinedROIHeads(torch.nn.ModuleDict):
             # TODO pointcloud concat.
             box3d_features = features
             # TODO rename cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR to cfg.MODEL.ROI_BOX3D_HEAD.SHARE_BOX_FEATURE_EXTRACTOR
-            if (
-                self.training
-                and self.cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR
-            ):
-                box3d_features = features
-            _, _, loss_box3d = self.box3d(box3d_features, detections, targets)
+            x, detections, loss_box3d = self.box3d(box3d_features, detections, targets)
             losses.update(loss_box3d)
         return roi_box_features, detections, losses
 

@@ -76,6 +76,6 @@ _ROI_BOX3D_PREDICTOR = {
 }
 
 
-def make_roi_box3d_predictor_dimension(cfg):
+def make_roi_box3d_predictor_localization_conv(cfg):
     func = _ROI_BOX3D_PREDICTOR[cfg.MODEL.ROI_BOX3D_HEAD.PREDICTOR_DIMENSION]
     return func(cfg)

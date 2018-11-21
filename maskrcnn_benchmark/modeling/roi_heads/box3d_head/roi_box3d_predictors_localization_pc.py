@@ -37,6 +37,14 @@ class FPNPredictor(nn.Module):
         # TODO check MODEL.BACKBONE.OUT_CHANNELS = 256, but multibin need output 7*7*512
         # TODO cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_DIMENSION_HEAD_DIM is 512, not match 256 output
         input_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_HEAD_DIM
+
+        input_size = cfg.MODEL.ROI_BOX3D_HEAD.POINTCLOUD_OUT_CHANNELS * (
+                cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2)
+        representation_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_HEAD_DIM
+        self.fc6 = nn.Linear(input_size, representation_size)
+        for l in [self.fc6,]:
+            nn.init.kaiming_uniform_(l.weight, a=1)
+            nn.init.constant_(l.bias, 0)
         # representation_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_DIMENSION_HEAD_DIM
         # self.fc6 = nn.Linear(input_size, representation_size)
         # self.lrelu = nn.LeakyReLU(0.1)
@@ -51,7 +59,7 @@ class FPNPredictor(nn.Module):
         #     nn.init.constant_(l.bias, 0)
 
         # self.cls_score = nn.Linear(representation_size, num_classes)
-        self.bbox3d_dimension_pred = nn.Linear(input_size, num_classes * 3)
+        self.bbox3d_dimension_pred = nn.Linear(representation_size, num_classes * 3)
 
         # nn.init.normal_(self.cls_score.weight, std=0.01)
         nn.init.normal_(self.bbox3d_dimension_pred.weight, std=0.001)
@@ -60,8 +68,8 @@ class FPNPredictor(nn.Module):
             nn.init.constant_(l.bias, 0)
 
     def forward(self, x):
-        # x = x.view(x.size(0), -1)
-        # x = self.fc6(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc6(x)
         # x = self.lrelu(x)
         # x = self.dropout(x)
         # scores = self.cls_score(x)
@@ -76,6 +84,6 @@ _ROI_BOX3D_PREDICTOR = {
 }
 
 
-def make_roi_box3d_predictor_dimension(cfg):
+def make_roi_box3d_predictor_localization_pc(cfg):
     func = _ROI_BOX3D_PREDICTOR[cfg.MODEL.ROI_BOX3D_HEAD.PREDICTOR_DIMENSION]
     return func(cfg)

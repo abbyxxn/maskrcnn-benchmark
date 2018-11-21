@@ -1,5 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 from torch import nn
+from torch.nn import functional as F
 
 
 class FastRCNNPredictor(nn.Module):
@@ -29,42 +30,36 @@ class FastRCNNPredictor(nn.Module):
         bbox_pred = self.bbox_pred(x)
         return cls_logit, bbox_pred
 
+
 class FPNPredictor(nn.Module):
     def __init__(self, cfg):
         super(FPNPredictor, self).__init__()
-        num_bins = cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN
-        # TODO check MODEL.BACKBONE.OUT_CHANNELS = 256, but multibin need output 7*7*512
-        # input_size = (cfg.MODEL.BACKBONE.OUT_CHANNELS + cfg.MODEL.ROI_BOX3D_HEAD.POINTCLOUD_OUT_CHANNELS) * (cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2)
-        # representation_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_ROTATION_CONFIDENCES_HEAD_DIM
-        # self.fc6 = nn.Linear(input_size, representation_size)
-        # self.lrelu = nn.LeakyReLU(0.1)
-        # self.dropout = nn.Dropout(p=0.5)
-        # for l in [self.fc6, ]:
-        #     nn.init.kaiming_uniform_(l.weight, a=1)
-        #     nn.init.constant_(l.bias, 0)
-        input_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_HEAD_DIM
 
-        self.bbox3d_rotation_conf_score = nn.Linear(input_size, num_bins)
-        nn.init.normal_(self.bbox3d_rotation_conf_score.weight, std=0.001)
-        for l in [self.bbox3d_rotation_conf_score, ]:
+        input_size = (cfg.MODEL.BACKBONE.OUT_CHANNELS + cfg.MODEL.ROI_BOX3D_HEAD.POINTCLOUD_OUT_CHANNELS) * (
+                    cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2)
+        representation_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_HEAD_DIM
+        self.fc6 = nn.Linear(input_size, representation_size)
+        self.fc7 = nn.Linear(representation_size, representation_size)
+
+        for l in [self.fc6, self.fc7]:
+
+            nn.init.kaiming_uniform_(l.weight, a=1)
             nn.init.constant_(l.bias, 0)
 
     def forward(self, x):
-        # x = x.view(x.size(0), -1)
-        # x = self.fc6(x)
-        # x = self.lrelu(x)
-        # x = self.dropout(x)
-        scores = self.bbox3d_rotation_conf_score(x)
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc6(x))
+        x = F.relu(self.fc7(x))
 
-        return scores
+        return x
 
 
-_ROI_BOX3D_PREDICTOR = {
+_ROI_BOX_PREDICTOR = {
     "FastRCNNPredictor": FastRCNNPredictor,
     "FPNPredictor": FPNPredictor,
 }
 
 
-def make_roi_box3d_predictor_rotation_confidences(cfg):
-    func = _ROI_BOX3D_PREDICTOR[cfg.MODEL.ROI_BOX3D_HEAD.PREDICTOR_ROTATION_CONFIDENCES]
+def make_roi_box3d_predictor(cfg):
+    func = _ROI_BOX_PREDICTOR[cfg.MODEL.ROI_BOX_HEAD.PREDICTOR]
     return func(cfg)
