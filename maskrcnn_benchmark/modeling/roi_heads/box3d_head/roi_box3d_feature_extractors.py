@@ -41,13 +41,13 @@ class ResNet50Conv5ROIFeatureExtractor(nn.Module):
 
 # TODO change ResNet50Conv5ROIFeatureExtractor for box3d_feature_extractors
 
-class FPN2MLPFeatureExtractor(nn.Module):
+class Box3dFeatureExtractor(nn.Module):
     """
     Heads for FPN for classification
     """
 
     def __init__(self, cfg):
-        super(FPN2MLPFeatureExtractor, self).__init__()
+        super(Box3dFeatureExtractor, self).__init__()
 
         resolution = cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION
         scales = cfg.MODEL.ROI_BOX3D_HEAD.POOLER_SCALES
@@ -68,7 +68,7 @@ class FPN2MLPFeatureExtractor(nn.Module):
 
 _ROI_BOX3D_FEATURE_EXTRACTORS = {
     "ResNet50Conv5ROIFeatureExtractor": ResNet50Conv5ROIFeatureExtractor,
-    "FPN2MLPFeatureExtractor": FPN2MLPFeatureExtractor,
+    "Box3dFeatureExtractor": Box3dFeatureExtractor,
 }
 
 

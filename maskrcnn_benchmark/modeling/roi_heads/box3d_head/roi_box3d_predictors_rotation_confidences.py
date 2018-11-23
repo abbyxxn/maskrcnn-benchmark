@@ -29,9 +29,9 @@ class FastRCNNPredictor(nn.Module):
         bbox_pred = self.bbox_pred(x)
         return cls_logit, bbox_pred
 
-class FPNPredictor(nn.Module):
+class RotationConfidencePredictor(nn.Module):
     def __init__(self, cfg):
-        super(FPNPredictor, self).__init__()
+        super(RotationConfidencePredictor, self).__init__()
         num_bins = cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN
         # TODO check MODEL.BACKBONE.OUT_CHANNELS = 256, but multibin need output 7*7*512
         # input_size = (cfg.MODEL.BACKBONE.OUT_CHANNELS + cfg.MODEL.ROI_BOX3D_HEAD.POINTCLOUD_OUT_CHANNELS) * (cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2)
@@ -61,7 +61,7 @@ class FPNPredictor(nn.Module):
 
 _ROI_BOX3D_PREDICTOR = {
     "FastRCNNPredictor": FastRCNNPredictor,
-    "FPNPredictor": FPNPredictor,
+    "RotationConfidencePredictor": RotationConfidencePredictor,
 }
 
 

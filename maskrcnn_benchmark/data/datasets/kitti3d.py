@@ -13,6 +13,7 @@ from PIL import Image
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.bounding_box_3d import Box3List
 import numpy as np
+TYPICAL_DIMENSION = {}
 
 
 class KITTIDataset(data.Dataset):
@@ -21,17 +22,26 @@ class KITTIDataset(data.Dataset):
         self.image_index, self.label_list, self.boxes_list, self.boxes_3d_list, self.alphas_list = self.get_pkl_element(
             ann_file)
         self.typical_dimension = self.get_typical_dimension(self.label_list, self.boxes_3d_list)
-        self.boxes_3d_list = self.boxes3d_encode(self.boxes_3d_list, self.label_list)
+        self.set_typical_dimension(self.typical_dimension)
+        # self.boxes_3d_list = self.boxes3d_encode(self.boxes_3d_list, self.label_list)
         number_image = len(self.image_index)
         self.image_lists = []
         self.calib_lists = []
-        self.disparity_list = []
+        self.depth_list = []
         for i in range(number_image):
             self.image_lists.append(root + '/training' + '/image_2/' + self.image_index[i] + "_01.png")
             self.calib_lists.append(root + '/training' + '/calib/' + self.image_index[i] + ".txt")
-            self.disparity_list.append(root + '/training' + '/disparity/' + self.image_index[i] + "_01.png.npz")
+            self.depth_list.append(root + '/training' + '/depth/' + self.image_index[i] + "_01.png.npz")
         self.transforms = transforms
         self.id_to_img_map = self.image_index
+        cache_file = os.path.join(root, 'typical_dimension_gt.pkl')
+        with open(cache_file, 'wb') as fid:
+            cPickle.dump(self.typical_dimension, fid)
+        print('wrote typical dimension gt to {}'.format(cache_file))
+        # self.alphas_list2 = self.get_alpha(self.calib_lists, self.boxes_list)
+        # alphas = []
+        # for i, alpha in enumerate(self.alphas_list2):
+        #     alphas.append((self.alphas_list[i] - alpha))
 
         # TODO implement remove_images_without_annotations:
         if remove_images_without_annotations:
@@ -64,7 +74,7 @@ class KITTIDataset(data.Dataset):
         # target.add_field("depth", depths)
 
 
-        d = np.load(self.disparity_list[idx])
+        d = np.load(self.depth_list[idx])
         depth = np.transpose(d['depths'])
         assert depth.shape == img.size, "{}, {}".format(
             depth.shape, img.size
@@ -88,6 +98,27 @@ class KITTIDataset(data.Dataset):
 
     def __len__(self):
         return len(self.image_lists)
+
+    def get_alpha(self, calib_lists, boxes_list):
+        alpha_list = []
+        for i, filename in enumerate(calib_lists):
+            with open(filename, 'r') as f:
+                calib = {}
+                for line in f:
+                    fields = line.split()
+                    if len(fields) is 0:
+                        continue
+                    key = fields[0][:-1]
+                    val = np.asmatrix(fields[1:]).astype(np.float32).reshape(3, -1)
+                    calib[key] = val
+                fx = calib['P2'][0, 0]
+                cx = calib['P2'][0, 2]
+                x = (boxes_list[i][:, 0] + boxes_list[i][:, 2]) / 2
+                alpha_list.append(np.arctan2(x - cx, fx))
+        return alpha_list
+
+
+
 
     def get_img_info(self, idx):
         """
@@ -146,48 +177,10 @@ class KITTIDataset(data.Dataset):
 
         return result  # lhw
 
-    def boxes3d_encode(self, boxes_3d_list, label_list):
-        """
-        Encode a set of proposals with respect to some
-        reference boxes
+    @staticmethod
+    def set_typical_dimension(typical_dimension):
+        global TYPICAL_DIMENSION
+        TYPICAL_DIMENSION = typical_dimension
+        return
 
-        Arguments:
-            reference_boxes (Tensor): reference boxes
-            proposals (Tensor): boxes to be encoded
-        """
-        for index, label in label_list.items():
-            for i, boxes_3d in enumerate(boxes_3d_list[index]):
-                boxes_3d[1:4] = boxes_3d[1:4] - self.typical_dimension[label[i]] + 1
-                boxes_3d[4:] = boxes_3d[4:] - self.typical_dimension[label[i]] + 1
-                # if (boxes_3d[1] >= 3000):
-                #     boxes_3d[1] = 0
-                # if (boxes_3d[2] >= 3000):
-                #     boxes_3d[2] = 0
-                # if (boxes_3d[3] >= 3000):
-                #     boxes_3d[3] = 0
-        return boxes_3d_list
 
-        #
-        # orientations = []
-        # confidences = []
-        # for box3d, label in zip(bounding_box_3d, labels):
-        #     # box3d[:, 1:4] = box3d[:, 1:4] - TYPICAL_DIMENSION[label]
-        #     box3d[:, 1:4] = box3d[:, 1:4] - 0.1
-        #     box3d[:, 0] = box3d[:, 0] + np.pi / 2
-        #     for i, r in enumerate(box3d[:, 0]):
-        #         if r < 0:
-        #             box3d[i, 0] = box3d[i, 0] + 2. * np.pi
-        #     box3d[:, 0] = box3d[:, 0] - int(box3d[:, 0] / (2. * np.pi)) * (2. * np.pi)
-        #     for i, r in enumerate(box3d[:, 0]):
-        #         orientation = np.zeros((self.num_bins, 2))
-        #         confidence = np.zeros(self.num_bins)
-        #         anchors = self.compute_anchors(r)
-        #         for anchor in anchors:
-        #             orientation[anchor[0]] = np.array([np.cos(anchor[1]), np.sin(anchor[1])])
-        #             confidence[anchor[0]] = 1.
-        #         confidence = confidence / np.sum(confidence)
-        #         orientations.append(orientation)
-        #         confidences.append(confidence)
-        # if len(bounding_box_3d) == 0:
-        #     return torch.empty(0, dtype=torch.float32)
-        # return confidences, orientations, bounding_box_3d

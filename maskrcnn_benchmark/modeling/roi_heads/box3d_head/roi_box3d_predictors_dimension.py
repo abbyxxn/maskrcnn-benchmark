@@ -30,9 +30,9 @@ class FastRCNNPredictor(nn.Module):
         return cls_logit, bbox_pred
 
 
-class FPNPredictor(nn.Module):
+class Box3dDimPredictor(nn.Module):
     def __init__(self, cfg):
-        super(FPNPredictor, self).__init__()
+        super(Box3dDimPredictor, self).__init__()
         num_classes = cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES
         # TODO check MODEL.BACKBONE.OUT_CHANNELS = 256, but multibin need output 7*7*512
         # TODO cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_DIMENSION_HEAD_DIM is 512, not match 256 output
@@ -72,7 +72,7 @@ class FPNPredictor(nn.Module):
 
 _ROI_BOX3D_PREDICTOR = {
     "FastRCNNPredictor": FastRCNNPredictor,
-    "FPNPredictor": FPNPredictor,
+    "Box3dDimPredictor": Box3dDimPredictor,
 }
 
 

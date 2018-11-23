@@ -31,9 +31,9 @@ class FastRCNNPredictor(nn.Module):
         return cls_logit, bbox_pred
 
 
-class FPNPredictor(nn.Module):
+class Box3DPredictor(nn.Module):
     def __init__(self, cfg):
-        super(FPNPredictor, self).__init__()
+        super(Box3DPredictor, self).__init__()
 
         input_size = (cfg.MODEL.BACKBONE.OUT_CHANNELS + cfg.MODEL.ROI_BOX3D_HEAD.POINTCLOUD_OUT_CHANNELS) * (
                     cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2)
@@ -56,10 +56,10 @@ class FPNPredictor(nn.Module):
 
 _ROI_BOX_PREDICTOR = {
     "FastRCNNPredictor": FastRCNNPredictor,
-    "FPNPredictor": FPNPredictor,
+    "Box3DPredictor": Box3DPredictor,
 }
 
 
 def make_roi_box3d_predictor(cfg):
-    func = _ROI_BOX_PREDICTOR[cfg.MODEL.ROI_BOX_HEAD.PREDICTOR]
+    func = _ROI_BOX_PREDICTOR[cfg.MODEL.ROI_BOX3D_HEAD.PREDICTOR]
     return func(cfg)

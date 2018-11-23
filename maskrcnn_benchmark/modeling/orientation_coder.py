@@ -2,6 +2,7 @@
 import math
 
 import torch
+import torch.nn.functional as F
 import numpy as np
 PI = 3.14159
 
@@ -71,6 +72,7 @@ class OrientationCoder(object):
         if alpha < 0:
             alpha = alpha + 2. * PI
         alpha = alpha - int(alpha / (2. * PI)) * (2. * PI)
+
         anchors = []
         wedge = 2. * PI / self.num_bins
 
@@ -78,64 +80,61 @@ class OrientationCoder(object):
         r_index = l_index + 1
       #  r_index = r_index % self.num_bins
 
-        if l_index * wedge - self.overlap / 2 < alpha < r_index * wedge + self.overlap / 2:
-            anchors.append([l_index, alpha - (l_index+r_index)*wedge/2 ])
+        if (alpha - l_index * wedge) < wedge / 2 * (1 + self.overlap / 2):
+            anchors.append([l_index, alpha - l_index * wedge])
 
-        if alpha < l_index * wedge + self.overlap / 2:
-            alpha = alpha - ((l_index-1)%self.num_bins * wedge + wedge/2)
-            if alpha > wedge:
-                alpha = 2 * PI - alpha
-            anchors.append([(l_index-1)%self.num_bins, alpha])
+        if (r_index * wedge - alpha) < wedge / 2 * (1 + self.overlap / 2):
+            anchors.append([r_index % self.num_bins, alpha - r_index * wedge])
 
-        if alpha > r_index * wedge - self.overlap / 2:
-            alpha = alpha - (r_index%self.num_bins * wedge + wedge/2)
-            if alpha > wedge:
-                alpha = 2*PI - alpha
-            anchors.append([r_index%self.num_bins, alpha])
+        # if l_index * wedge - self.overlap / 2 < alpha < r_index * wedge + self.overlap / 2:
+        #     anchors.append([l_index, alpha - (l_index+r_index)*wedge/2 ])
+        #
+        # if alpha < l_index * wedge + self.overlap / 2:
+        #     alpha = alpha - ((l_index-1)%self.num_bins * wedge + wedge/2)
+        #     if alpha > wedge:
+        #         alpha = 2 * PI - alpha
+        #     anchors.append([(l_index-1)%self.num_bins, alpha])
+        #
+        # if alpha > r_index * wedge - self.overlap / 2:
+        #     alpha = alpha - (r_index%self.num_bins * wedge + wedge/2)
+        #     if alpha > wedge:
+        #         alpha = 2*PI - alpha
+        #     anchors.append([r_index%self.num_bins, alpha])
 
         return anchors
 
-    def decode(self, rel_codes, boxes):
+    def decode(self, box3d_rotation_logits, box3d_rotation_regression):
         """
-        From a set of original boxes and encoded relative box offsets,
-        get the decoded boxes.
+        From a set of orientation_confidences and encoded relative orientation offsets,
+        get the decoded box orientation.
 
         Arguments:
-            rel_codes (Tensor): encoded boxes
-            boxes (Tensor): reference boxes.
+            orientation_offset (Tensor): encoded orientation offset
+            orientation_confidence (Tensor): the max confidence bin
         """
+        device = box3d_rotation_logits.device
+        bin_prob = F.softmax(box3d_rotation_logits, -1)
+        max_bin = torch.argmax(bin_prob, dim=1)
+        anchors = box3d_rotation_regression[:, max_bin]
+        angle_offsets = torch.zeros(box3d_rotation_logits.shape[0], device=device)
+        for i, anchor in enumerate(anchors):
+            if anchor[1] > 0:
+                angle_offset = torch.acos(anchor[0])
+                angle_offsets[i] = angle_offset
+            else:
+                angle_offset = -torch.acos(anchor[0])
+                angle_offsets[i] = angle_offset
 
-        boxes = boxes.to(rel_codes.dtype)
+        wedge = 2 * PI / self.num_bins
+        angle_offsets = angle_offsets + max_bin * wedge
+        angle_offsets = angle_offsets % (2. * PI)
 
-        TO_REMOVE = 1  # TODO remove
-        widths = boxes[:, 2] - boxes[:, 0] + TO_REMOVE
-        heights = boxes[:, 3] - boxes[:, 1] + TO_REMOVE
-        ctr_x = boxes[:, 0] + 0.5 * widths
-        ctr_y = boxes[:, 1] + 0.5 * heights
+        angle_offsets = angle_offsets - PI / 2
+        for i, angle_offset in enumerate(angle_offsets):
+            if angle_offset < PI:
+                angle_offset = angle_offset - (2. * PI)
+                angle_offsets[i] = angle_offset
+            else:
+                angle_offsets[i] = angle_offset
 
-        wx, wy, ww, wh = self.weights
-        dx = rel_codes[:, 0::4] / wx
-        dy = rel_codes[:, 1::4] / wy
-        dw = rel_codes[:, 2::4] / ww
-        dh = rel_codes[:, 3::4] / wh
-
-        # Prevent sending too large values into torch.exp()
-        dw = torch.clamp(dw, max=self.bbox_xform_clip)
-        dh = torch.clamp(dh, max=self.bbox_xform_clip)
-
-        pred_ctr_x = dx * widths[:, None] + ctr_x[:, None]
-        pred_ctr_y = dy * heights[:, None] + ctr_y[:, None]
-        pred_w = torch.exp(dw) * widths[:, None]
-        pred_h = torch.exp(dh) * heights[:, None]
-
-        pred_boxes = torch.zeros_like(rel_codes)
-        # x1
-        pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
-        # y1
-        pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
-        # x2 (note: "- 1" is correct; don't be fooled by the asymmetry)
-        pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w - 1
-        # y2 (note: "- 1" is correct; don't be fooled by the asymmetry)
-        pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h - 1
-
-        return pred_boxes
+        return angle_offsets

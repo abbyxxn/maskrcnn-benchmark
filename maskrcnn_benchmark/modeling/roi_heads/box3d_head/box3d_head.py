@@ -9,12 +9,11 @@ from .roi_pc_feature_extractors import make_roi_pc_feature_extractor
 from .roi_box3d_predictors import make_roi_box3d_predictor
 from .roi_box3d_predictors_dimension import make_roi_box3d_predictor_dimension
 from .roi_box3d_predictors_rotation_confidences import make_roi_box3d_predictor_rotation_confidences
-from .roi_box3d_predictors_rotation_angle_sin_add_cos import make_roi_box3d_predictor_rotation_angle_sin_add_cos
+from .roi_box3d_predictors_rotation_regression import make_roi_box3d_predictor_rotation_regression
 from .roi_box3d_predictors_localization_conv import make_roi_box3d_predictor_localization_conv
 from .roi_box3d_predictors_localization_pc import  make_roi_box3d_predictor_localization_pc
 from .inference import make_roi_box3d_post_processor
 from .loss import make_roi_box3d_loss_evaluator
-from .localization_loss import make_roi_box3d_localization_loss_evaluator
 
 
 
@@ -54,12 +53,11 @@ class ROIBox3DHead(torch.nn.Module):
         self.predictor = make_roi_box3d_predictor(cfg)
         self.predictor_dimension = make_roi_box3d_predictor_dimension(cfg)
         self.predictor_rotation_confidences = make_roi_box3d_predictor_rotation_confidences(cfg)
-        self.predictor_rotation_angle_sin_add_cos = make_roi_box3d_predictor_rotation_angle_sin_add_cos(cfg)
+        self.predictor_rotation_angle_sin_add_cos = make_roi_box3d_predictor_rotation_regression(cfg)
         self.predictor_localization_conv = make_roi_box3d_predictor_localization_conv(cfg)
         self.predictor_localization_pc = make_roi_box3d_predictor_localization_pc(cfg)
         self.post_processor = make_roi_box3d_post_processor(cfg)
         self.loss_evaluator = make_roi_box3d_loss_evaluator(cfg)
-        self.localization_loss_evaluator = make_roi_box3d_localization_loss_evaluator(cfg)
 
     def forward(self, features, proposals, targets=None):
         """

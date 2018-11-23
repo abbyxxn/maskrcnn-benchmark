@@ -30,9 +30,9 @@ class FastRCNNPredictor(nn.Module):
         return cls_logit, bbox_pred
 
 
-class FPNPredictor(nn.Module):
+class RotationRegressionPredictor(nn.Module):
     def __init__(self, cfg):
-        super(FPNPredictor, self).__init__()
+        super(RotationRegressionPredictor, self).__init__()
         self.num_bins = cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN
         # TODO check MODEL.BACKBONE.OUT_CHANNELS = 256, but multibin need output 7*7*512
         # input_size = (cfg.MODEL.BACKBONE.OUT_CHANNELS + cfg.MODEL.ROI_BOX3D_HEAD.POINTCLOUD_OUT_CHANNELS) * (cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2)
@@ -61,10 +61,10 @@ class FPNPredictor(nn.Module):
 
 _ROI_BOX3D_PREDICTOR = {
     "FastRCNNPredictor": FastRCNNPredictor,
-    "FPNPredictor": FPNPredictor,
+    "RotationRegressionPredictor": RotationRegressionPredictor,
 }
 
 
-def make_roi_box3d_predictor_rotation_angle_sin_add_cos(cfg):
-    func = _ROI_BOX3D_PREDICTOR[cfg.MODEL.ROI_BOX3D_HEAD.PREDICTOR_ROTATION_ANGLE_SIN_ADD_COS]
+def make_roi_box3d_predictor_rotation_regression(cfg):
+    func = _ROI_BOX3D_PREDICTOR[cfg.MODEL.ROI_BOX3D_HEAD.PREDICTOR_ROTATION_REGRESSION]
     return func(cfg)

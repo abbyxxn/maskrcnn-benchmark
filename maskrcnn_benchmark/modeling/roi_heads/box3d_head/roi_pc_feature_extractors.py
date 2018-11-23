@@ -14,13 +14,13 @@ width_to_focal[1241] = 718.856
 width_to_focal[1224] = 707.0493
 width_to_focal[1238] = 718.3351
 
-class FPN2MLPFeatureExtractor(nn.Module):
+class Box3dPCFeatureExtractor(nn.Module):
     """
     Heads for FPN for classification
     """
 
     def __init__(self, cfg):
-        super(FPN2MLPFeatureExtractor, self).__init__()
+        super(Box3dPCFeatureExtractor, self).__init__()
 
         resolution = cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION
         scales = (1.,)
@@ -78,10 +78,10 @@ class FPN2MLPFeatureExtractor(nn.Module):
 
 
 _ROI_BOX3D_FEATURE_EXTRACTORS = {
-    "FPN2MLPFeatureExtractor": FPN2MLPFeatureExtractor,
+    "Box3dPCFeatureExtractor": Box3dPCFeatureExtractor,
 }
 
 
 def make_roi_pc_feature_extractor(cfg):
-    func = _ROI_BOX3D_FEATURE_EXTRACTORS[cfg.MODEL.ROI_BOX3D_HEAD.FEATURE_EXTRACTOR]
+    func = _ROI_BOX3D_FEATURE_EXTRACTORS[cfg.MODEL.ROI_BOX3D_HEAD.POINT_CLOUD_FEATURE_EXTRACTOR]
     return func(cfg)
