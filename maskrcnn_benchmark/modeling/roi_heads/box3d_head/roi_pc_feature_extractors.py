@@ -1,12 +1,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-from torch import nn
-from torch.nn import functional as F
 import torch
+from torch import nn
 
-from maskrcnn_benchmark.modeling.backbone import resnet
 from maskrcnn_benchmark.modeling.poolers import Pooler
-from maskrcnn_benchmark.layers import Conv2d
-import numpy as np
 
 width_to_focal = dict()
 width_to_focal[1242] = 721.5377
@@ -35,8 +31,8 @@ class Box3dPCFeatureExtractor(nn.Module):
     def forward(self, proposal_per_image, target_per_image):
         device = proposal_per_image.bbox.device
         depth = target_per_image.extra_fields["depth"]
-        f = width_to_focal[depth.shape[1]]
-        pointcloud = self.depth_to_pointcloud(depth[0], f, f, depth.shape[1]/2, depth.shape[2]/2)
+        f = width_to_focal[depth.shape[2]]
+        pointcloud = self.depth_to_pointcloud(depth[0], f, f, depth.shape[2] / 2, depth.shape[1] / 2)
         w, h = depth[0].shape
         # pointcloud = pointcloud.reshape(3, w, h)
         pointcloud = torch.unsqueeze(pointcloud.reshape(3, w, h), 0)
@@ -49,6 +45,30 @@ class Box3dPCFeatureExtractor(nn.Module):
         # depths = depths + (rand_num,)
         x = self.pooler(pointclouds, proposal)
         return x
+
+    # def forward(self, proposal_per_image, target_per_image):
+    #     device = proposal_per_image.bbox.device
+    #     depth = target_per_image.extra_fields["depth"]
+    #     f = width_to_focal[depth.shape[1]]
+    #     pointcloud = self.depth_to_pointcloud(depth[0], f, f, depth.shape[1]/2, depth.shape[2]/2)
+    #     w, h = depth[0].shape
+    #     # pointcloud = pointcloud.reshape(3, w, h)
+    #     pointcloud = torch.unsqueeze(pointcloud.reshape(3, w, h), 0)
+    #     pointclouds = []
+    #     pointclouds = [pointcloud]
+    #     proposal = [proposal_per_image]
+    #     # proposal.append(proposal_per_image)
+    #     # rand_num = torch.rand(1, 3, 1224, 370)
+    #     # rand_num = torch.as_tensor(rand_num, dtype=torch.float32, device=device)
+    #     # depths = depths + (rand_num,)
+    #     x = self.pooler(pointclouds, proposal)
+    #     if x.max() == 0 and x.min() == 0:
+    #         print('max', pointcloud.max())
+    #         print('min', pointcloud.min())
+    #         print('max', depth.max())
+    #         print('min', depth.min())
+    #         raise AssertionError
+    #     return x
 
     def depth_to_pointcloud(self, depth, fx, fy, cx, cy):
         device = depth.device

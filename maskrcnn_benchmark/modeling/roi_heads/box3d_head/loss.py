@@ -4,17 +4,15 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 from maskrcnn_benchmark.layers import smooth_l1_loss
-from maskrcnn_benchmark.data.datasets.kitti3d import TYPICAL_DIMENSION
-from maskrcnn_benchmark.modeling.box_coder import BoxCoder
-from maskrcnn_benchmark.modeling.box3d_coder import Box3dCoder
-from maskrcnn_benchmark.modeling.orientation_coder import OrientationCoder
-from maskrcnn_benchmark.modeling.matcher import Matcher
-from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
 from maskrcnn_benchmark.modeling.balanced_positive_negative_sampler import (
     BalancedPositiveNegativeSampler
 )
+from maskrcnn_benchmark.modeling.box3d_coder import Box3dCoder
+from maskrcnn_benchmark.modeling.box_coder import BoxCoder
+from maskrcnn_benchmark.modeling.matcher import Matcher
+from maskrcnn_benchmark.modeling.orientation_coder import OrientationCoder
 from maskrcnn_benchmark.modeling.utils import cat
-import numpy as np
+from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
 
 
 class Box3DLossComputation(object):
@@ -168,7 +166,7 @@ class Box3DLossComputation(object):
             beta=1,
         )
         box3d_localization_loss = box3d_localization_loss / labels.numel()
-        # box3d_localization_loss = box3d_localization_loss / 10
+        box3d_localization_loss = box3d_localization_loss / 10
 
 
         # box3d_rotation_logits = torch.as_tensor(box3d_rotation_logits, dtype=torch.float32, device=device)

@@ -1,9 +1,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import torch
 
+from .box3d_head.box3d_head import build_roi_box3d_head
 from .box_head.box_head import build_roi_box_head
 from .mask_head.mask_head import build_roi_mask_head
-from .box3d_head.box3d_head import build_roi_box3d_head
 
 
 class CombinedROIHeads(torch.nn.ModuleDict):
@@ -21,7 +21,7 @@ class CombinedROIHeads(torch.nn.ModuleDict):
         if cfg.MODEL.BOX3D_ON and cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR:
             self.box3d.feature_extractor = self.box.feature_extractor
 
-    def forward(self, features, proposals, targets=None):
+    def forward(self, features, proposals, targets=None, img_original_ids=None):
         losses = {}
         # TODO rename x to roi_box_features, if it doesn't increase memory consumption
         roi_box_features, detections, loss_box = self.box(features, proposals, targets)
@@ -31,8 +31,8 @@ class CombinedROIHeads(torch.nn.ModuleDict):
             # optimization: during training, if we share the feature extractor between
             # the box and the mask heads, then we can reuse the features already computed
             if (
-                self.training
-                and self.cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR
+                    self.training
+                    and self.cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR
             ):
                 mask_features = roi_box_features
             # During training, self.box() will return the unaltered proposals as "detections"
@@ -44,7 +44,8 @@ class CombinedROIHeads(torch.nn.ModuleDict):
             # TODO pointcloud concat.
             box3d_features = features
             # TODO rename cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR to cfg.MODEL.ROI_BOX3D_HEAD.SHARE_BOX_FEATURE_EXTRACTOR
-            x, detections, loss_box3d = self.box3d(box3d_features, detections, targets)
+            x, detections, loss_box3d = self.box3d(box3d_features, detections, targets,
+                                                   img_original_ids=img_original_ids)
             losses.update(loss_box3d)
         return roi_box_features, detections, losses
 

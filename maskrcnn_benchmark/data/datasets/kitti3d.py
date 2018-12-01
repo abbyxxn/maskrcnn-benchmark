@@ -6,19 +6,22 @@ Simple dataset class that wraps a list of path names
 import _pickle as cPickle
 import os
 
+import numpy as np
 import torch
 import torch.utils.data as data
 from PIL import Image
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.bounding_box_3d import Box3List
-import numpy as np
+
 TYPICAL_DIMENSION = {}
 
 
 class KITTIDataset(data.Dataset):
     def __init__(self, root, ann_file, remove_images_without_annotations, transforms=None):
         super(KITTIDataset, self).__init__()
+        # from pycocotools.coco import COCO
+        # self.coco = COCO(ann_file)
         self.image_index, self.label_list, self.boxes_list, self.boxes_3d_list, self.alphas_list = self.get_pkl_element(
             ann_file)
         self.typical_dimension = self.get_typical_dimension(self.label_list, self.boxes_3d_list)
@@ -67,18 +70,20 @@ class KITTIDataset(data.Dataset):
         num_instances = alphas.shape[0]
         target.add_field("alphas", alphas)
 
-        # depth = self.disparity_list[idx]
+        # depth = self.image_index[idx]
         # depths = []
         # for i in range(num_instances):
-        #     depths.append(depth)
+        #     depths.append(int(depth))
+        # depths = torch.tensor(depths)
         # target.add_field("depth", depths)
 
 
         d = np.load(self.depth_list[idx])
-        depth = np.transpose(d['depths'])
-        assert depth.shape == img.size, "{}, {}".format(
-            depth.shape, img.size
-            )
+        # depth = np.transpose(d['depths'])
+        depth = d['depths']
+        # assert depth.shape == img.size, "{}, {}".format(
+        #     depth.shape, img.size
+        #     )
         depths = []
         for i in range(num_instances):
             depths.append(depth)
@@ -94,7 +99,9 @@ class KITTIDataset(data.Dataset):
         if self.transforms is not None:
             img, target = self.transforms(img, target)
 
-        return img, target, idx
+        img_original_idx = self.id_to_img_map[idx]
+
+        return img, target, idx, img_original_idx
 
     def __len__(self):
         return len(self.image_lists)
@@ -133,9 +140,9 @@ class KITTIDataset(data.Dataset):
     def get_pkl_element(ann_file):
         '''
         labels mapping:
-        1 : person_sitting, pedstrian
-        2 : cyclist, riding
-        3 : van, car
+        1 : person_sitting, pedestrian  pedestrian
+        2 : cyclist, riding             cyclist
+        3 : van, car                    car
         4 : train, bus
         5 : truck
         :param ann_file:

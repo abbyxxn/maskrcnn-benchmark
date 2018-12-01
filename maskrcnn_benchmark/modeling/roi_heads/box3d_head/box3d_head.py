@@ -1,19 +1,20 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import torch
-from torch import nn
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
-
-from .roi_box3d_feature_extractors import make_roi_box3d_feature_extractor
-from .roi_pc_feature_extractors import make_roi_pc_feature_extractor
-from .roi_box3d_predictors import make_roi_box3d_predictor
-from .roi_box3d_predictors_dimension import make_roi_box3d_predictor_dimension
-from .roi_box3d_predictors_rotation_confidences import make_roi_box3d_predictor_rotation_confidences
-from .roi_box3d_predictors_rotation_regression import make_roi_box3d_predictor_rotation_regression
-from .roi_box3d_predictors_localization_conv import make_roi_box3d_predictor_localization_conv
-from .roi_box3d_predictors_localization_pc import  make_roi_box3d_predictor_localization_pc
 from .inference import make_roi_box3d_post_processor
 from .loss import make_roi_box3d_loss_evaluator
+from .roi_box3d_feature_extractors import make_roi_box3d_feature_extractor
+from .roi_box3d_predictors import make_roi_box3d_predictor
+from .roi_box3d_predictors_dimension import make_roi_box3d_predictor_dimension
+from .roi_box3d_predictors_localization_conv import make_roi_box3d_predictor_localization_conv
+from .roi_box3d_predictors_localization_pc import make_roi_box3d_predictor_localization_pc
+from .roi_box3d_predictors_rotation_confidences import make_roi_box3d_predictor_rotation_confidences
+from .roi_box3d_predictors_rotation_regression import make_roi_box3d_predictor_rotation_regression
+from .roi_pc_feature_extractors import make_roi_pc_feature_extractor
+
+
+# from .localization_loss import make_roi_box3d_localization_loss_evaluator
 
 
 
@@ -21,7 +22,6 @@ def keep_only_positive_boxes(boxes):
     """
     Given a set of BoxList containing the `labels` field,
     return a set of BoxList for which `labels > 0`.
-
     Arguments:
         boxes (list of BoxList)
     """
@@ -58,14 +58,14 @@ class ROIBox3DHead(torch.nn.Module):
         self.predictor_localization_pc = make_roi_box3d_predictor_localization_pc(cfg)
         self.post_processor = make_roi_box3d_post_processor(cfg)
         self.loss_evaluator = make_roi_box3d_loss_evaluator(cfg)
+        # self.localization_loss_evaluator = make_roi_box3d_localization_loss_evaluator(cfg)
 
-    def forward(self, features, proposals, targets=None):
+    def forward(self, features, proposals, targets=None, img_original_ids=None):
         """
         Arguments:
             features (list[Tensor]): feature-maps from possibly several levels
             proposals (list[BoxList]): proposal boxes
             targets (list[BoxList], optional): the ground-truth targets.
-
         Returns:
             x (Tensor): the result of the feature extractor
             proposals (list[BoxList]): during training, the subsampled proposals

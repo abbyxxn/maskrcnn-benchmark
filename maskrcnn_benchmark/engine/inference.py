@@ -1,23 +1,20 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import datetime
 import logging
+import os
 import tempfile
 import time
-import os
 from collections import OrderedDict
 
 import torch
-
 from tqdm import tqdm
 
+from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
+from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
 from ..structures.bounding_box import BoxList
 from ..utils.comm import is_main_process
 from ..utils.comm import scatter_gather
 from ..utils.comm import synchronize
-
-
-from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
-from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
 
 
 def compute_on_dataset(model, data_loader, device):
@@ -41,7 +38,7 @@ def prepare_for_coco_detection(predictions, dataset):
     coco_results = []
     for image_id, prediction in enumerate(predictions):
         # TODO image_id is what
-        # original_id = dataset.id_to_img_map[image_id]
+        original_id = dataset.id_to_img_map[image_id]
         if len(prediction) == 0:
             continue
 

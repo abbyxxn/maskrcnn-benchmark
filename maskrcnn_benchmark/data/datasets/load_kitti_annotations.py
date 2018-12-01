@@ -76,7 +76,7 @@ class KITTIObject(object):
             cache_file = os.path.join(self.cache_path, 'kitti_validation_' + self.name.split('_')[-1] + '_gt_roidb.pkl')
             if os.path.exists(cache_file):
                 with open(cache_file, 'rb') as fid:
-                    roidb_val = cPickle.loab(fid)
+                    roidb_val = cPickle.load(fid)
                 print('kitti validation gt roidb loaded from {}'.format(cache_file))
             else:
                 print('Load kitti validation annotations...')
@@ -92,7 +92,7 @@ class KITTIObject(object):
             cache_file = os.path.join(self.cache_path, 'kitti_train_' + self.name.split('_')[-1] + '_gt_roidb.pkl')
             if os.path.exists(cache_file):
                 with open(cache_file, 'rb') as fid:
-                    roidb_train = cPickle.loab(fid)
+                    roidb_train = cPickle.load(fid)
                 print('kitti train gt roidb loaded from {}'.format(cache_file))
             else:
                 print('Load kitti train annotations...')
@@ -329,6 +329,6 @@ class KITTIObject(object):
 
 
 if __name__ == '__main__':
-    d = KITTIObject('train_all', '/home/jiamingsun/raid/dataset/kitti/object', split_dataset=True, split_factor=0.8)
+    d = KITTIObject('train_all', '/home/jiamingsun/raid/dataset/kitti/object', split_dataset=True, split_factor=0.999)
     roi = d.gt_roidb()
     print('roi')
