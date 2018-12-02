@@ -58,7 +58,7 @@ MODEL:
 DATASETS:
   #TRAIN: ("kitti_fine_instanceonly_seg_train",)
   #TEST: ("kitti_fine_instanceonly_seg_val",)
-  TRAIN: ("kitti_3d_val",)
+  TRAIN: ("kitti_3d_train",)
   TEST: ("kitti_3d_val",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
@@ -68,6 +68,6 @@ SOLVER:
   STEPS: (60000, 80000)
   CHECKPOINT_PERIOD: 2500
 #  MAX_ITER: 150000
-  MAX_ITER: 120000
+  MAX_ITER: 110000
 TEST:
   IMS_PER_BATCH: 1

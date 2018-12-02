@@ -1,4 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+import numpy as np
 import torch
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
@@ -66,6 +67,7 @@ class ROIBox3DHead(torch.nn.Module):
             features (list[Tensor]): feature-maps from possibly several levels
             proposals (list[BoxList]): proposal boxes
             targets (list[BoxList], optional): the ground-truth targets.
+            img_original_ids (list[str]): the image original filename index
         Returns:
             x (Tensor): the result of the feature extractor
             proposals (list[BoxList]): during training, the subsampled proposals
@@ -85,10 +87,11 @@ class ROIBox3DHead(torch.nn.Module):
         else:
             x = self.feature_extractor(features, proposals)
 
-        pc_features = []
-        for proposal_per_image, target_per_image in zip(proposals, targets):
-            pc_feature = self.pc_feature_extractor(proposal_per_image, target_per_image)
-            pc_features.append(pc_feature)
+        pc_features = self.pc_feature_prepare(proposals, img_original_ids)
+        # for proposal_per_image, target_per_image in zip(proposals, targets):
+        #     depth = target_per_image.extra_fields["depth"]
+        #     pc_feature = self.pc_feature_extractor(proposal_per_image, depth)
+        #     pc_features.append(pc_feature)
 
         pc_features = torch.cat(pc_features)
         fusion_feature = torch.cat((x, pc_features), 1)
@@ -155,6 +158,27 @@ class ROIBox3DHead(torch.nn.Module):
             loss_dict["loss_box3d_loc_reg"] = loss_box3d_localization
 
         return x, all_proposals, loss_dict
+
+    def pc_feature_prepare(self, proposals, img_original_ids):
+        pc_features = []
+        PTH = "/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object/training/depth/"
+        for proposal_per_image, img_ori_id in zip(proposals, img_original_ids):
+            depth_path = PTH + img_ori_id + "_01.png.npz"
+            d = np.load(depth_path)
+            depth = d['depths']
+            # depth = np.transpose(d['depths'])
+            # assert depth.shape[0] == proposal_per_image.size[1], "{}, {}".format(
+            #     depth.shape, proposal_per_image.size
+            # )
+            # device = proposal_per_image.bbox.device
+            # num_instances = proposal_per_image.bbox.shape[0]
+            # depths = []
+            # for i in range(num_instances):
+            #     depths.append(depth)
+            depth = torch.as_tensor(depth, device=proposal_per_image.bbox.device)
+            pc_feature = self.pc_feature_extractor(proposal_per_image, depth)
+            pc_features.append(pc_feature)
+        return pc_features
 
 
 def build_roi_box3d_head(cfg):

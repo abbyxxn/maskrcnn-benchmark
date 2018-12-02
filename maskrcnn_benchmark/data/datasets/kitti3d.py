@@ -22,6 +22,7 @@ class KITTIDataset(data.Dataset):
         super(KITTIDataset, self).__init__()
         # from pycocotools.coco import COCO
         # self.coco = COCO(ann_file)
+        self.root = root
         self.image_index, self.label_list, self.boxes_list, self.boxes_3d_list, self.alphas_list = self.get_pkl_element(
             ann_file)
         self.typical_dimension = self.get_typical_dimension(self.label_list, self.boxes_3d_list)
@@ -37,14 +38,26 @@ class KITTIDataset(data.Dataset):
             self.depth_list.append(root + '/training' + '/depth/' + self.image_index[i] + "_01.png.npz")
         self.transforms = transforms
         self.id_to_img_map = self.image_index
+
+        self.category_id_to_label_name = {
+            1: "Car",
+            2: "DontCare",
+            3: "DontCare",
+            4: "DontCare",
+            5: "DontCare",
+            6: "DontCare",
+            7: "DontCare",
+            8: "DontCare",
+        }
+        self.label_name_to_category_id = {
+            "Pedestrian": 1,
+            "Cyclist": 2,
+            "Car": 3,
+        }
         cache_file = os.path.join(root, 'typical_dimension_gt.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(self.typical_dimension, fid)
         print('wrote typical dimension gt to {}'.format(cache_file))
-        # self.alphas_list2 = self.get_alpha(self.calib_lists, self.boxes_list)
-        # alphas = []
-        # for i, alpha in enumerate(self.alphas_list2):
-        #     alphas.append((self.alphas_list[i] - alpha))
 
         # TODO implement remove_images_without_annotations:
         if remove_images_without_annotations:
@@ -67,7 +80,7 @@ class KITTIDataset(data.Dataset):
 
         alphas = self.alphas_list[idx]
         alphas = torch.tensor(alphas)
-        num_instances = alphas.shape[0]
+        # num_instances = alphas.shape[0]
         target.add_field("alphas", alphas)
 
         # depth = self.image_index[idx]
@@ -77,18 +90,17 @@ class KITTIDataset(data.Dataset):
         # depths = torch.tensor(depths)
         # target.add_field("depth", depths)
 
-
-        d = np.load(self.depth_list[idx])
-        # depth = np.transpose(d['depths'])
-        depth = d['depths']
-        # assert depth.shape == img.size, "{}, {}".format(
-        #     depth.shape, img.size
-        #     )
-        depths = []
-        for i in range(num_instances):
-            depths.append(depth)
-        depths = torch.tensor(depths)
-        target.add_field("depth", depths)
+        # d = np.load(self.depth_list[idx])
+        # # depth = np.transpose(d['depths'])
+        # depth = d['depths']
+        # # assert depth.shape == img.size, "{}, {}".format(
+        # #     depth.shape, img.size
+        # #     )
+        # depths = []
+        # for i in range(num_instances):
+        #     depths.append(depth)
+        # depths = torch.tensor(depths)
+        # target.add_field("depth", depths)
 
         # TODO clip
         target = target.clip_to_image(remove_empty=True)

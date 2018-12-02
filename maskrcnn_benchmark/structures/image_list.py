@@ -17,6 +17,7 @@ class ImageList(object):
         Arguments:
             tensors (tensor)
             image_sizes (list[tuple[int, int]])
+            img_original_ids (list[str, str])
         """
         self.tensors = tensors
         self.image_sizes = image_sizes

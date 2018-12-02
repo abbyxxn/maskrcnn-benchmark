@@ -67,7 +67,7 @@ class Box3List(object):
         if ratios[0] == ratios[1]:
             ratio = ratios[0]
             scaled_box = self.bbox_3d * ratio
-            bbox_3d = BoxList(scaled_box, size, mode=self.mode)
+            bbox_3d = Box3List(scaled_box, size, mode=self.mode)
             # bbox_3d._copy_extra_fields(self)
             return bbox_3d
 

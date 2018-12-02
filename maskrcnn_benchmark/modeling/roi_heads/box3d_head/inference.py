@@ -1,14 +1,15 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import torch
-import torch.nn.functional as F
 from torch import nn
 
+from maskrcnn_benchmark.modeling.box3d_coder import Box3dCoder
+from maskrcnn_benchmark.modeling.box_coder import BoxCoder
+from maskrcnn_benchmark.modeling.orientation_coder import OrientationCoder
 from maskrcnn_benchmark.structures.bounding_box import BoxList
+from maskrcnn_benchmark.structures.bounding_box_3d import Box3List
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_nms
 from maskrcnn_benchmark.structures.boxlist_ops import cat_boxlist
-from maskrcnn_benchmark.modeling.box_coder import BoxCoder
-from maskrcnn_benchmark.modeling.box3d_coder import Box3dCoder
-from maskrcnn_benchmark.modeling.orientation_coder import OrientationCoder
+
 
 class PostProcessor(nn.Module):
     """
@@ -62,8 +63,8 @@ class PostProcessor(nn.Module):
         # boxes_3d = [a.get_field("boxes_3d") for a in boxes]
         # concat_boxes_3d = torch.cat([a.bbox_3d for a in boxes_3d], dim=0)
 
-        labels = labels - 1
-        map_inds = 3 * labels.cpu()[:, None] + torch.tensor([0, 1, 2])
+        labels_index = labels - 1  # ignore background, so label index should start from zero
+        map_inds = 3 * labels_index.cpu()[:, None] + torch.tensor([0, 1, 2])
         pred_box_3d_dim = self.box3d_coder.decode(
             box3d_dim_regression[index[:, None], map_inds], labels
         )
@@ -72,26 +73,47 @@ class PostProcessor(nn.Module):
             box3d_rotation_logits, box3d_rotation_regression
         )
 
+        pred_box_3d_loc = box3d_localization_conv_regression[index[:, None], map_inds] + \
+                          box3d_localization_pc_regression[index[:, None], map_inds]
 
-        num_classes = box3d_dim_regression.shape[1] / 3
+        pred_box_3d_ry = pred_box_3d_orientation + torch.atan(pred_box_3d_loc[:, 0] / pred_box_3d_loc[:, 2])
+        # pred_box_3d_ry = pred_box_3d_ry.reshape(-1, 1)
+        # pred_box_3d_orientation = pred_box_3d_orientation.reshape(-1, 1)
+
+        pred_box_3d = torch.cat((pred_box_3d_ry.reshape(-1, 1), pred_box_3d_dim, pred_box_3d_loc), dim=1)
+        pred_box_3d = pred_box_3d.split(boxes_per_image, dim=0)
+        pred_box_3d_alphas = pred_box_3d_orientation.split(boxes_per_image, dim=0)
+
+        results = []
+        for alphas, box_3d, box in zip(pred_box_3d_alphas, pred_box_3d, boxes):
+            bbox = BoxList(box.bbox, box.size, mode="xyxy")
+            for field in box.fields():
+                bbox.add_field(field, box.get_field(field))
+            boxes_3d = Box3List(box_3d, box.size)
+            bbox.add_field("boxes_3d", boxes_3d)
+            bbox.add_field("alphas", alphas)
+            results.append(bbox)
+
+        return results
+        # num_classes = box3d_dim_regression.shape[1] / 3
         # proposals = self.box_coder.decode(
         #     box_regression.view(sum(boxes_per_image), -1), concat_boxes
         # )
 
         # num_classes = class_prob.shape[1]
 
-        proposals = proposals.split(boxes_per_image, dim=0)
-        class_prob = class_prob.split(boxes_per_image, dim=0)
+        # proposals = proposals.split(boxes_per_image, dim=0)
+        # class_prob = class_prob.split(boxes_per_image, dim=0)
 
-        results = []
-        for prob, boxes_per_img, image_shape in zip(
-            class_prob, proposals, image_shapes
-        ):
-            boxlist = self.prepare_boxlist(boxes_per_img, prob, image_shape)
-            boxlist = boxlist.clip_to_image(remove_empty=False)
-            boxlist = self.filter_results(boxlist, num_classes)
-            results.append(boxlist)
-        return results
+        # results = []
+        # for prob, boxes_per_img, image_shape in zip(
+        #     class_prob, proposals, image_shapes
+        # ):
+        #     boxlist = self.prepare_boxlist(boxes_per_img, prob, image_shape)
+        #     boxlist = boxlist.clip_to_image(remove_empty=False)
+        #     boxlist = self.filter_results(boxlist, num_classes)
+        #     results.append(boxlist)
+        # return results
        # class_logits, box_regression = x
        # class_prob = F.softmax(class_logits, -1)
 
@@ -177,10 +199,9 @@ def make_roi_box3d_post_processor(cfg):
     )
     return postprocessor
 
-
-if __name__ == "__main__":
-    box3d_coder = Box3dCoder(weights=(5., 5., 5, 10., 10., 10))
-    orientation_coder = OrientationCoder(2, 0.1)
-    postprocessor = make_roi_box3d_post_processor(box3d_coder, orientation_coder)
-
-    postprocessor(x, boxes)
+# if __name__ == "__main__":
+#     box3d_coder = Box3dCoder(weights=(5., 5., 5, 10., 10., 10))
+#     orientation_coder = OrientationCoder(2, 0.1)
+#     postprocessor = make_roi_box3d_post_processor(box3d_coder, orientation_coder)
+#
+#     postprocessor(x, boxes)

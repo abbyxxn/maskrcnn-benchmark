@@ -1,9 +1,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+import _pickle as cPickle
 import math
 import os
 
 import torch
-import _pickle as cPickle
 
 
 class Box3dCoder(object):
@@ -32,7 +32,7 @@ class Box3dCoder(object):
         """
         device = reference_boxes.device
 
-        cache_file = os.path.join('/home/jiamingsun/raid/dataset/kitti/object', 'typical_dimension_gt.pkl')
+        cache_file = os.path.join('/home/jiamingsun/raid/dataset/kitti/object', 'typical_dimension_train_gt.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as file:
                 typical_dimension = cPickle.load(file)
@@ -86,7 +86,7 @@ class Box3dCoder(object):
             boxes (Tensor): reference boxes. proposal
         """
         device = reference_boxes_3d.device
-        cache_file = os.path.join('/home/jiamingsun/raid/dataset/kitti/object', 'typical_dimension_gt.pkl')
+        cache_file = os.path.join('/home/jiamingsun/raid/dataset/kitti/object', 'typical_dimension_train_gt.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as file:
                 typical_dimension = cPickle.load(file)
@@ -96,7 +96,12 @@ class Box3dCoder(object):
         ex_widths = torch.zeros(reference_boxes_3d.shape[0], dtype=torch.float32, device=device)
 
         for i, label in enumerate(labels):
+            if label not in [1]:
+                continue
             ex_lengths[i], ex_heights[i], ex_widths[i] = typical_dimension[label.item()]
+
+        # TODO fix the model match the categories of label
+        # ex_lengths[i], ex_heights[i], ex_widths[i] = typical_dimension[label.item()]
 
         # boxes = boxes.to(rel_codes.dtype)
 
@@ -107,9 +112,9 @@ class Box3dCoder(object):
         # ctr_y = boxes[:, 1] + 0.5 * heights
 
         wl, wh, ww, wx, wy, wz = self.weights
-        dl = reference_boxes_3d[:, 1] / wl
-        dh = reference_boxes_3d[:, 2] / wh
-        dw = reference_boxes_3d[:, 3] / ww
+        dl = reference_boxes_3d[:, 0] / wl
+        dh = reference_boxes_3d[:, 1] / wh
+        dw = reference_boxes_3d[:, 2] / ww
 
         # Prevent sending too large values into torch.exp()
         dl = torch.clamp(dl, max=self.bbox_xform_clip)

@@ -134,7 +134,8 @@ class KITTIObject(object):
             #    cPickle.dump(roidb, fid)
             # print('wrote gt roidb to {}'.format(cache_file))
 
-        return [roidb_val, roidb_train]
+        # return [roidb_val, roidb_train]
+        return
 
     def image_path_at(self, i):
         """
@@ -157,16 +158,16 @@ class KITTIObject(object):
         Load the indexes listed in this dataset's image set file.
         """
         # Example path to image set file:
-        image_set_file = os.path.join(self.dataset_path, self._dataset + '.txt')
+        image_set_file = os.path.join(self.dataset_path, "ImageSets", self._dataset + '.txt')
         assert os.path.exists(image_set_file), \
             'Path does not exist: {}'.format(image_set_file)
         with open(image_set_file) as f:
             image_index = [x.strip() for x in f.readlines()]
-            image_ind = []
-            for image in image_index:
-                if image.endswith('_01'):
-                    image_ind.append(image)
-        return image_ind
+            # image_ind = []
+            # for image in image_index:
+            #     if image.endswith('_01'):
+            #         image_ind.append(image)
+        return image_index
 
     def split_dataset_function(self, image_index, factor=0.8):
         image_ind = []
@@ -329,6 +330,6 @@ class KITTIObject(object):
 
 
 if __name__ == '__main__':
-    d = KITTIObject('train_all', '/home/jiamingsun/raid/dataset/kitti/object', split_dataset=True, split_factor=0.999)
+    d = KITTIObject('val_car', '/home/jiamingsun/raid/dataset/kitti/object', split_dataset=False, split_factor=0.999)
     roi = d.gt_roidb()
     print('roi')

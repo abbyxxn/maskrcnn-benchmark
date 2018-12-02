@@ -28,12 +28,12 @@ class Box3dPCFeatureExtractor(nn.Module):
         )
         self.pooler = pooler
 
-    def forward(self, proposal_per_image, target_per_image):
+    def forward(self, proposal_per_image, depth):
         device = proposal_per_image.bbox.device
-        depth = target_per_image.extra_fields["depth"]
-        f = width_to_focal[depth.shape[2]]
-        pointcloud = self.depth_to_pointcloud(depth[0], f, f, depth.shape[2] / 2, depth.shape[1] / 2)
-        w, h = depth[0].shape
+        # depth = target_per_image.extra_fields["depth"]
+        f = width_to_focal[depth.shape[1]]
+        pointcloud = self.depth_to_pointcloud(depth, f, f, depth.shape[1] / 2, depth.shape[0] / 2)
+        w, h = depth.shape
         # pointcloud = pointcloud.reshape(3, w, h)
         pointcloud = torch.unsqueeze(pointcloud.reshape(3, w, h), 0)
         pointclouds = ()

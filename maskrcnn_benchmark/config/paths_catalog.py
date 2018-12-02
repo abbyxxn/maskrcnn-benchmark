@@ -50,11 +50,11 @@ class DatasetCatalog(object):
         ),
         "kitti_3d_train": (
             "kitti/object",
-            "kitti/object/kitti_train_gt_roidb.pkl",
+            "kitti/object/kitti_train_car_gt_roidb.pkl",
         ),
         "kitti_3d_val": (
             "kitti/object",
-            "kitti/object/kitti_validation_gt_roidb.pkl",
+            "kitti/object/kitti_val_car_gt_roidb.pkl",
         ),
     }
 

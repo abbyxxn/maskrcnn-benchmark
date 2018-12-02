@@ -1,9 +1,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-import math
 
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
+
 PI = 3.14159
 
 class OrientationCoder(object):
@@ -115,8 +115,10 @@ class OrientationCoder(object):
         device = box3d_rotation_logits.device
         bin_prob = F.softmax(box3d_rotation_logits, -1)
         max_bin = torch.argmax(bin_prob, dim=1)
-        anchors = box3d_rotation_regression[:, max_bin]
-        angle_offsets = torch.zeros(box3d_rotation_logits.shape[0], device=device)
+        box3d_rotation_regression = box3d_rotation_regression.reshape(-1, self.num_bins, 2)
+        index = torch.arange(box3d_rotation_logits.shape[0])
+        anchors = box3d_rotation_regression[index, max_bin, :]
+        angle_offsets = torch.zeros((box3d_rotation_logits.shape[0]), device=device)
         for i, anchor in enumerate(anchors):
             if anchor[1] > 0:
                 angle_offset = torch.acos(anchor[0])
@@ -125,13 +127,15 @@ class OrientationCoder(object):
                 angle_offset = -torch.acos(anchor[0])
                 angle_offsets[i] = angle_offset
 
-        wedge = 2 * PI / self.num_bins
+        wedge = 2. * PI / self.num_bins
+        # wedge = torch.as_tensor(wedge, device=device)
+        max_bin = torch.as_tensor(max_bin, dtype=torch.float32, device=device)
         angle_offsets = angle_offsets + max_bin * wedge
         angle_offsets = angle_offsets % (2. * PI)
 
         angle_offsets = angle_offsets - PI / 2
         for i, angle_offset in enumerate(angle_offsets):
-            if angle_offset < PI:
+            if angle_offset > PI:
                 angle_offset = angle_offset - (2. * PI)
                 angle_offsets[i] = angle_offset
             else:

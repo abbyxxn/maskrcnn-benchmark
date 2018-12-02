@@ -9,8 +9,10 @@ from collections import OrderedDict
 import torch
 from tqdm import tqdm
 
+from maskrcnn_benchmark.kitti_object_eval_python.evaluate import evaluate
 from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
+from maskrcnn_benchmark.utils.miscellaneous import mkdir
 from ..structures.bounding_box import BoxList
 from ..utils.comm import is_main_process
 from ..utils.comm import scatter_gather
@@ -31,6 +33,51 @@ def compute_on_dataset(model, data_loader, device):
             {img_id: result for img_id, result in zip(image_ids, output)}
         )
     return results_dict
+
+
+def prepare_for_bbox3d_detection(predictions, dataset, output_folder):
+    # assert isinstance(dataset, COCODataset)
+    if output_folder:
+        output_folder = os.path.join(output_folder, "bbox3d_result")
+        mkdir(output_folder)
+    # bbox3d_results = []
+    for image_id, prediction in enumerate(predictions):
+        # TODO image_id is what
+        original_id = dataset.id_to_img_map[image_id]
+        if len(prediction) == 0:
+            continue
+        bbox3d_result_path = os.path.join(output_folder, original_id + ".txt")
+        with open(bbox3d_result_path, 'w') as box3d:
+            # TODO replace with get_img_info?
+            # image_width = dataset.coco.imgs[original_id]["width"]
+            # image_height = dataset.coco.imgs[original_id]["height"]
+            image_width = dataset.get_img_info(image_id)["width"]
+            image_height = dataset.get_img_info(image_id)["height"]
+            prediction = prediction.resize((image_width, image_height))
+            prediction = prediction.convert("xywh")
+
+            boxes = prediction.bbox.tolist()
+            scores = prediction.get_field("scores").tolist()
+            labels = prediction.get_field("labels").tolist()
+            boxes_3d = prediction.get_field("boxes_3d").bbox_3d.tolist()
+            alphas = prediction.get_field("alphas").tolist()
+
+            # mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
+            mapped_labels = [dataset.category_id_to_label_name[i] for i in labels]
+
+            for k, box in enumerate(boxes):
+                line = [mapped_labels[k], -1, -1, alphas[k], box[0], box[1], box[2], box[3], boxes_3d[k][1],
+                        boxes_3d[k][2], boxes_3d[k][3], boxes_3d[k][4], boxes_3d[k][5], boxes_3d[k][6], boxes_3d[k][0],
+                        scores[k]]
+                line = ' '.join([str(item) for item in line]) + '\n'
+                box3d.write(line)
+
+    label_path = dataset.root + "/training/label_2"
+    result_path = output_folder
+    label_split_file_path = dataset.root + "/ImageSets/val.txt"
+    evaluate(label_path, result_path, label_split_file_path, current_class=0, coco=False, score_thresh=-1)
+
+    return output_folder
 
 
 def prepare_for_coco_detection(predictions, dataset):
@@ -412,6 +459,10 @@ def inference(
     if "segm" in iou_types:
         logger.info("Preparing segm results")
         coco_results["segm"] = prepare_for_coco_segmentation(predictions, dataset)
+    if "bbox3d" in iou_types:
+        logger.info("Preparing bbox3d results")
+        coco_results["bbox3d"] = prepare_for_bbox3d_detection(predictions, dataset, output_folder)
+        return
 
     results = COCOResults(*iou_types)
     logger.info("Evaluating predictions")
