@@ -1,7 +1,8 @@
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
-  WEIGHT: "/home/abby/Repositories/maskrcnn-benchmark/pretrained_model/e2e_mask_rcnn_R_50_FPN_1x_city.pth"
+#  WEIGHT: "/home/abby/Repositories/maskrcnn-benchmark/pretrained_model/e2e_mask_rcnn_R_50_FPN_1x_city.pth"
   # WEIGHT: "/home/abby/Repositories/maskrcnn-benchmark/workspace/kitti_pretrained_model/model_0090000.pth"
+  WEIGHT: "/home/abby/Repositories/maskrcnn-benchmark/output/kitti3dgoodenough/model_0100000.pth"
   BACKBONE:
     CONV_BODY: "R-50-FPN"
     OUT_CHANNELS: 256

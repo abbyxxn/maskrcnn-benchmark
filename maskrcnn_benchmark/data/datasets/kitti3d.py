@@ -40,9 +40,17 @@ class KITTIDataset(data.Dataset):
         self.id_to_img_map = self.image_index
 
         self.category_id_to_label_name = {
-            1: "Car",
-            2: "DontCare",
-            3: "DontCare",
+            # 1: "Car",
+            # 2: "DontCare",
+            # 3: "DontCare",
+            # 4: "DontCare",
+            # 5: "DontCare",
+            # 6: "DontCare",
+            # 7: "DontCare",
+            # 8: "DontCare",
+            1: "Pedestrian",
+            2: "Cyclist",
+            3: "Car",
             4: "DontCare",
             5: "DontCare",
             6: "DontCare",

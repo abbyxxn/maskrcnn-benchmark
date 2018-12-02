@@ -330,6 +330,6 @@ class KITTIObject(object):
 
 
 if __name__ == '__main__':
-    d = KITTIObject('val_car', '/home/jiamingsun/raid/dataset/kitti/object', split_dataset=False, split_factor=0.999)
+    d = KITTIObject('train_all', '/home/jiamingsun/raid/dataset/kitti/object', split_dataset=False, split_factor=0.999)
     roi = d.gt_roidb()
     print('roi')
