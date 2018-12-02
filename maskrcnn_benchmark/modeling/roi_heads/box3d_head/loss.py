@@ -155,7 +155,7 @@ class Box3DLossComputation(object):
             beta=1,
         )
         box3d_loss = box3d_loss / labels.numel()
-        # box3d_loss = box3d_loss / 10
+        box3d_loss = box3d_loss / 100
 
         # device = box3d_localization_conv_regression.device
         # boxes3d_targets = torch.as_tensor(boxes3d_targets, dtype=torch.float32, device=device)
