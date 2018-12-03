@@ -20,13 +20,10 @@ TYPICAL_DIMENSION = {}
 class KITTIDataset(data.Dataset):
     def __init__(self, root, ann_file, remove_images_without_annotations, transforms=None):
         super(KITTIDataset, self).__init__()
-        # from pycocotools.coco import COCO
-        # self.coco = COCO(ann_file)
         self.root = root
         self.image_index, self.label_list, self.boxes_list, self.boxes_3d_list, self.alphas_list = self.get_pkl_element(
             ann_file)
-        self.typical_dimension = self.get_typical_dimension(self.label_list, self.boxes_3d_list)
-        self.set_typical_dimension(self.typical_dimension)
+        # self.typical_dimension = self.get_typical_dimension(self.label_list, self.boxes_3d_list)
         # self.boxes_3d_list = self.boxes3d_encode(self.boxes_3d_list, self.label_list)
         number_image = len(self.image_index)
         self.image_lists = []
@@ -62,10 +59,10 @@ class KITTIDataset(data.Dataset):
             "Cyclist": 2,
             "Car": 3,
         }
-        cache_file = os.path.join(root, 'typical_dimension_gt.pkl')
-        with open(cache_file, 'wb') as fid:
-            cPickle.dump(self.typical_dimension, fid)
-        print('wrote typical dimension gt to {}'.format(cache_file))
+        # cache_file = os.path.join(root, 'typical_dimension_gt.pkl')
+        # with open(cache_file, 'wb') as fid:
+        #     cPickle.dump(self.typical_dimension, fid)
+        # print('wrote typical dimension gt to {}'.format(cache_file))
 
         # TODO implement remove_images_without_annotations:
         if remove_images_without_annotations:
@@ -204,10 +201,5 @@ class KITTIDataset(data.Dataset):
 
         return result  # lhw
 
-    @staticmethod
-    def set_typical_dimension(typical_dimension):
-        global TYPICAL_DIMENSION
-        TYPICAL_DIMENSION = typical_dimension
-        return
 
 
