@@ -61,3 +61,27 @@ class MetricLogger(object):
                 "{}: {:.4f} ({:.4f})".format(name, meter.median, meter.global_avg)
             )
         return self.delimiter.join(loss_str)
+
+
+class TFLogger(MetricLogger):
+    def __init__(self, log_period=20, start_iter=0, max_iter=90000, summary_logger=None, delimiter="  "):
+        super(TFLogger, self).__init__(delimiter)
+        # init summary logger
+        self.LOG_PERIOD = log_period
+        self.iteration = start_iter
+        self.MAX_ITER = max_iter
+        self.summary_logger = summary_logger
+
+    def update(self, **kwargs):
+        super(TFLogger, self).update(**kwargs)
+        if (self.iteration % self.LOG_PERIOD == 0 or
+                self.iteration == self.MAX_ITER - 1):
+            if self.summary_logger:
+                for k, v in kwargs.items():
+                    if isinstance(v, torch.Tensor):
+                        v = v.item()
+                    assert isinstance(v, (float, int))
+                    self.summary_logger.add_scalar(k, v, self.iteration)
+
+    def set_iteration(self, iteration):
+        self.iteration = iteration

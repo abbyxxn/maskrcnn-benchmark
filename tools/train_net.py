@@ -8,8 +8,10 @@ Basic training script for PyTorch
 
 import argparse
 import os
+import pickle
 
 import torch
+import yaml
 
 from maskrcnn_benchmark.config import cfg
 from maskrcnn_benchmark.data import make_data_loader
@@ -22,10 +24,10 @@ from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer
 from maskrcnn_benchmark.utils.collect_env import collect_env_info
 from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 from maskrcnn_benchmark.utils.logger import setup_logger
-from maskrcnn_benchmark.utils.miscellaneous import mkdir
+from maskrcnn_benchmark.utils.miscellaneous import mkdir, get_run_name, get_output_dir
 
 
-def train(cfg, local_rank, distributed):
+def train(cfg, local_rank, distributed, output_dir):
     model = build_detection_model(cfg)
     device = torch.device(cfg.MODEL.DEVICE)
     model.to(device)
@@ -43,7 +45,7 @@ def train(cfg, local_rank, distributed):
     arguments = {}
     arguments["iteration"] = 0
 
-    output_dir = cfg.OUTPUT_DIR
+    # output_dir = cfg.OUTPUT_DIR
 
     save_to_disk = get_rank() == 0
     checkpointer = DetectronCheckpointer(
@@ -62,6 +64,7 @@ def train(cfg, local_rank, distributed):
     checkpoint_period = cfg.SOLVER.CHECKPOINT_PERIOD
 
     do_train(
+        cfg,
         model,
         data_loader,
         optimizer,
@@ -70,6 +73,7 @@ def train(cfg, local_rank, distributed):
         device,
         checkpoint_period,
         arguments,
+        output_dir,
     )
 
     return model
@@ -145,8 +149,13 @@ def main():
     cfg.freeze()
 
     output_dir = cfg.OUTPUT_DIR
+    run_name = get_run_name() + '_step'
+    output_dir = get_output_dir(output_dir, args, run_name)
     if output_dir:
         mkdir(output_dir)
+    blob = {'cfg': yaml.dump(cfg), 'args': args}
+    with open(os.path.join(output_dir, 'config_and_args.pkl'), 'wb') as f:
+        pickle.dump(blob, f, pickle.HIGHEST_PROTOCOL)
 
     logger = setup_logger("maskrcnn_benchmark", output_dir, get_rank())
     logger.info("Using {} GPUs".format(num_gpus))
@@ -161,7 +170,7 @@ def main():
         logger.info(config_str)
     logger.info("Running with config:\n{}".format(cfg))
 
-    model = train(cfg, args.local_rank, args.distributed)
+    model = train(cfg, args.local_rank, args.distributed, output_dir)
 
     if not args.skip_test:
         test(cfg, model, args.distributed)
