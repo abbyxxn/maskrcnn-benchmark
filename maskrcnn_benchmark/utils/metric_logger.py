@@ -73,7 +73,11 @@ class TFLogger(MetricLogger):
         self.summary_logger = summary_logger
 
     def update(self, **kwargs):
-        super(TFLogger, self).update(**kwargs)
+        for k, v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                v = v.item()
+            assert isinstance(v, (float, int))
+            self.meters[k].update(v)
         if (self.iteration % self.LOG_PERIOD == 0 or
                 self.iteration == self.MAX_ITER - 1):
             if self.summary_logger:

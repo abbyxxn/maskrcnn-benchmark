@@ -8,10 +8,8 @@ Basic training script for PyTorch
 
 import argparse
 import os
-import pickle
 
 import torch
-import yaml
 
 from maskrcnn_benchmark.config import cfg
 from maskrcnn_benchmark.data import make_data_loader
@@ -24,7 +22,7 @@ from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer
 from maskrcnn_benchmark.utils.collect_env import collect_env_info
 from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 from maskrcnn_benchmark.utils.logger import setup_logger
-from maskrcnn_benchmark.utils.miscellaneous import mkdir, get_run_name, get_output_dir
+from maskrcnn_benchmark.utils.miscellaneous import mkdir, get_run_name, get_output_dir, get_tensorboard_writer
 
 
 def train(cfg, local_rank, distributed, output_dir):
@@ -63,6 +61,9 @@ def train(cfg, local_rank, distributed, output_dir):
 
     checkpoint_period = cfg.SOLVER.CHECKPOINT_PERIOD
 
+    if cfg.VIS.USE_TENSORBOARD:
+        summary_logger = get_tensorboard_writer(local_rank, distributed, output_dir)
+
     do_train(
         cfg,
         model,
@@ -73,7 +74,7 @@ def train(cfg, local_rank, distributed, output_dir):
         device,
         checkpoint_period,
         arguments,
-        output_dir,
+        summary_logger,
     )
 
     return model
@@ -153,9 +154,6 @@ def main():
     output_dir = get_output_dir(output_dir, args, run_name)
     if output_dir:
         mkdir(output_dir)
-    blob = {'cfg': yaml.dump(cfg), 'args': args}
-    with open(os.path.join(output_dir, 'config_and_args.pkl'), 'wb') as f:
-        pickle.dump(blob, f, pickle.HIGHEST_PROTOCOL)
 
     logger = setup_logger("maskrcnn_benchmark", output_dir, get_rank())
     logger.info("Using {} GPUs".format(num_gpus))
