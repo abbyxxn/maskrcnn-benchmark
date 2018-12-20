@@ -1,5 +1,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 
+import math
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -121,10 +123,14 @@ class OrientationCoder(object):
         angle_offsets = torch.zeros((box3d_rotation_logits.shape[0]), device=device)
         for i, anchor in enumerate(anchors):
             if anchor[1] > 0:
-                angle_offset = torch.acos(anchor[0])
+                acos_offset = math.modf(anchor[0])[0]
+                acos_offset = torch.as_tensor(acos_offset, dtype=torch.float32, device=device)
+                angle_offset = torch.acos(acos_offset)
                 angle_offsets[i] = angle_offset
             else:
-                angle_offset = -torch.acos(anchor[0])
+                acos_offset = math.modf(anchor[0])[0]
+                acos_offset = torch.as_tensor(acos_offset, dtype=torch.float32, device=device)
+                angle_offset = -torch.acos(acos_offset)
                 angle_offsets[i] = angle_offset
 
         wedge = 2. * PI / self.num_bins

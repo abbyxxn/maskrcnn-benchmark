@@ -125,7 +125,7 @@ class Box3dCoder(object):
         pred_h = torch.exp(dh) * ex_heights
         pred_w = torch.exp(dw) * ex_widths
 
-        pred_boxes = torch.stack((pred_l, pred_h, pred_w),dim=1)
+        pred_boxes = torch.stack((pred_h, pred_w, pred_l), dim=1)
 
         # pred_boxes = torch.zeros_like(rel_codes)
         # # x1

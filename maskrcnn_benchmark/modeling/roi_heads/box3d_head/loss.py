@@ -166,7 +166,7 @@ class Box3DLossComputation(object):
             beta=1,
         )
         box3d_localization_loss = box3d_localization_loss / labels.numel()
-        box3d_localization_loss = box3d_localization_loss / 100
+        box3d_localization_loss = box3d_localization_loss / 5
 
 
         # box3d_rotation_logits = torch.as_tensor(box3d_rotation_logits, dtype=torch.float32, device=device)
