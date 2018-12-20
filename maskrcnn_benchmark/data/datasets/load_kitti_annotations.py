@@ -247,9 +247,11 @@ class KITTIObject(object):
             except:
                 continue
             # ignore objects with undetermined difficult level
-            # level = self._get_obj_level(obj)
-            # if level > 3:
-            #    continue
+            level = self._get_obj_level(obj)
+            if level > 3:
+                continue
+            # if level != 3:
+            #     continue
             if cls_str in self.classes:
                 self.cls_stats[cls_str] += 1
             ix += 1
@@ -281,6 +283,17 @@ class KITTIObject(object):
         gt_classes = gt_classes[:ix + 1]
         ignored = ignored[:ix + 1]
         overlaps = overlaps[:ix + 1, :]
+
+        #
+        # root = '/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object'
+        #
+        # image_path = root + '/training' + '/image_2/' + index + ".png"
+        # img = Image.open(image_path).convert("RGB")
+        # im0 = np.asarray(img)
+        # # boxes = box2d.convert('xyxy')
+        # gt_boxes = boxes.tolist()
+        # img2 = vis_2d_boxes_list(im0, gt_boxes)
+        # plt_show(img2)
 
         # alphas.resize(ix + 1)
         # boxes.resize(ix + 1, 4)
@@ -330,6 +343,6 @@ class KITTIObject(object):
 
 
 if __name__ == '__main__':
-    d = KITTIObject('train_all', '/home/jiamingsun/raid/dataset/kitti/object', split_dataset=False, split_factor=0.999)
-    roi = d.gt_roidb()
+    d = KITTIObject('train_car', '/home/jiamingsun/raid/dataset/kitti/object', split_dataset=False, split_factor=0.999)
+    d.gt_roidb()
     print('roi')
