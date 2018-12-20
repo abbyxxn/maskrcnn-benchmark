@@ -48,15 +48,40 @@ class DatasetCatalog(object):
             "cityscapes/images",
             "cityscapes/annotations/instancesonly_filtered_gtFine_val.json",
         ),
+        "kitti_2d_train": (
+            "kitti/object/training/image_2",
+            # "kitti/object/kitti_train_car_gt_roidb.pkl",
+            "kitti/object/json_annotation/instancesonly_filtered_gtFine_train.json",
+        ),
+        "kitti_2d_val": (
+            "kitti/object/training/image_2",
+            # "kitti/object/kitti_val_car_gt_roidb.pkl",
+            "kitti/object/json_annotation/instancesonly_filtered_gtFine_val.json",
+        ),
         "kitti_3d_train": (
             "kitti/object",
             # "kitti/object/kitti_train_car_gt_roidb.pkl",
-            "kitti/object/kitti_train_all_gt_roidb.pkl",
+            "kitti/object/pkl/kitti_train_all_gt_roidb.pkl",
         ),
         "kitti_3d_val": (
             "kitti/object",
             # "kitti/object/kitti_val_car_gt_roidb.pkl",
-            "kitti/object/kitti_val_all_gt_roidb.pkl",
+            "kitti/object/pkl/kitti_val_all_gt_roidb.pkl",
+        ),
+        "kitti_2d_val_easy": (
+            "kitti/object/training/image_2",
+            # "kitti/object/kitti_val_car_gt_roidb.pkl",
+            "kitti/object/json_annotation/instancesonly_filtered_gtFine_train_easy.json",
+        ),
+        "kitti_2d_val_moderate": (
+            "kitti/object/training/image_2",
+            # "kitti/object/kitti_val_car_gt_roidb.pkl",
+            "kitti/object/json_annotation/instancesonly_filtered_gtFine_train_moderate.json",
+        ),
+        "kitti_2d_val_hard": (
+            "kitti/object/training/image_2",
+            # "kitti/object/kitti_val_car_gt_roidb.pkl",
+            "kitti/object/json_annotation/instancesonly_filtered_gtFine_train_hard.json",
         ),
     }
 
