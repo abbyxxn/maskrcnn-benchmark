@@ -8,14 +8,28 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from six.moves import cPickle as pickle
 import argparse
 import os
 import sys
+
+import datasets.cityscapes.coco_to_cityscapes_id as cs
 import numpy as np
 import torch
 
-import datasets.cityscapes.coco_to_cityscapes_id as cs
+
+def kitti_to_cityscapes(kitti_id):
+    lookup = {
+        0: 0,  # ... background
+        #  1: 2,  # bicycle
+        1: 2,  # car
+        #  3: 1,  # person
+        #  4: 7,  # train
+        #  5: 8,  # truck
+        #  6: 4,  # motorcycle
+        #  7: 6,  # bus
+        #  8: -1,  # rider (-1 means rand init)
+    }
+    return lookup[kitti_id]
 
 NUM_CS_CLS = 9
 NUM_COCO_CLS = 81
@@ -75,11 +89,12 @@ def convert_coco_blob_to_cityscapes_blob(coco_blob, convert_func):
     mean = coco_blob.mean()
     cs_shape = [NUM_CS_CLS] + list(coco_blob.shape[1:])
     cs_blob = torch.from_numpy(np.random.randn(*cs_shape)) * std + mean
-    cs_blob = (torch.from_numpy(np.random.randn(*cs_shape)) * std + mean).astype(np.float32)
+    # cs_blob = (torch.from_numpy(np.random.randn(*cs_shape)) * std + mean).astype(np.float32)
 
     # Replace random parameters with COCO parameters if class mapping exists
     for i in range(NUM_CS_CLS):
         coco_cls_id = getattr(cs, convert_func)(i)
+        # coco_cls_id = kitti_to_cityscapes(i)
         if coco_cls_id >= 0:  # otherwise ignore (rand init)
             cs_blob[i] = coco_blob[coco_cls_id]
 
