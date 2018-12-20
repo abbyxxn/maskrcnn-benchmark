@@ -71,21 +71,22 @@ class TFLogger(MetricLogger):
         self.iteration = start_iter
         self.MAX_ITER = max_iter
         self.summary_logger = summary_logger
+        self.tb_ignored_keys = ['data']
 
     def update(self, **kwargs):
-        for k, v in kwargs.items():
-            if isinstance(v, torch.Tensor):
-                v = v.item()
-            assert isinstance(v, (float, int))
-            self.meters[k].update(v)
+        super(TFLogger, self).update(**kwargs)
+        self.tb_log_stats(**kwargs)
+
+    def set_iteration(self, iteration):
+        self.iteration = iteration
+
+    def tb_log_stats(self, **kwargs):
         if (self.iteration % self.LOG_PERIOD == 0 or
                 self.iteration == self.MAX_ITER - 1):
             if self.summary_logger:
                 for k, v in kwargs.items():
-                    if isinstance(v, torch.Tensor):
-                        v = v.item()
-                    assert isinstance(v, (float, int))
-                    self.summary_logger.add_scalar(k, v, self.iteration)
-
-    def set_iteration(self, iteration):
-        self.iteration = iteration
+                    if k not in self.tb_ignored_keys:
+                        if isinstance(v, torch.Tensor):
+                            v = v.item()
+                        assert isinstance(v, (float, int))
+                        self.summary_logger.add_scalar(k, v, self.iteration)

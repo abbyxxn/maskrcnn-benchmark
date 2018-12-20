@@ -45,7 +45,7 @@ def do_train(
         device,
         checkpoint_period,
         arguments,
-        summary_logger,
+        summary_logger=None,
 ):
     logger = logging.getLogger("maskrcnn_benchmark.trainer")
     logger.info("Start training")
