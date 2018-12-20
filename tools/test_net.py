@@ -78,6 +78,7 @@ def main():
     data_loaders_val = make_data_loader(cfg, is_train=False, is_distributed=distributed)
     for output_folder, data_loader_val in zip(output_folders, data_loaders_val):
         inference(
+            cfg,
             model,
             data_loader_val,
             iou_types=iou_types,
