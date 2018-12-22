@@ -141,10 +141,10 @@ def convert_kitti_instance_only(root, ann_file, out_dir, dataset):
 
 
 if __name__ == '__main__':
-    root = '/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object'
-    # ann_file = '/home/jiamingsun/raid/dataset/kitti/object/kitti_train_car_hard_gt_roidb.pkl'
-    ann_file = '/home/jiamingsun/raid/dataset/kitti/object/kitti_val_car_gt_roidb.pkl'
-    # output_dir = '/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object/json_annotation'
-    output_dir = '/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object'
-    dataset = 'val'  # train or val or test
-    convert_kitti_instance_only(root, ann_file, output_dir, dataset)
+# root = '/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object'
+# # ann_file = '/home/jiamingsun/raid/dataset/kitti/object/kitti_train_car_hard_gt_roidb.pkl'
+# ann_file = '/home/jiamingsun/raid/dataset/kitti/object/kitti_val_car_gt_roidb.pkl'
+# # output_dir = '/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object/json_annotation'
+# output_dir = '/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object'
+# dataset = 'val'  # train or val or test
+# convert_kitti_instance_only(root, ann_file, output_dir, dataset)
