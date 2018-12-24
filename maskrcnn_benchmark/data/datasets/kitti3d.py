@@ -17,27 +17,31 @@ from maskrcnn_benchmark.structures.bounding_box_3d import Box3List
 TYPICAL_DIMENSION = {}
 
 
+# "*_list" content annotation for every instance which is dict-type
+# key = id (0-3712/7481); value = annotation
 class KITTIDataset(data.Dataset):
     def __init__(self, root, ann_file, remove_images_without_annotations, transforms=None):
         super(KITTIDataset, self).__init__()
         self.root = root
-        self.image_index, self.label_list, self.boxes_list, self.boxes_3d_list, self.alphas_list = self.get_pkl_element(
+        self.image_name, self.label_list, self.boxes_list, self.boxes_3d_list, self.alphas_list = self.get_pkl_element(
             ann_file)
         # self.typical_dimension = self.get_typical_dimension(self.label_list, self.boxes_3d_list)
-        # self.boxes_3d_list = self.boxes3d_encode(self.boxes_3d_list, self.label_list)
-        number_image = len(self.image_index)
+        number_image = len(self.image_name)
         self.image_lists = []
         self.calib_lists = []
         self.depth_list = []
+        self.pseudo_pc_list = []
         for i in range(number_image):
-            self.image_lists.append(root + '/training' + '/image_2/' + self.image_index[i] + "_01.png")
-            self.calib_lists.append(root + '/training' + '/calib/' + self.image_index[i] + ".txt")
-            self.depth_list.append(root + '/training' + '/depth/' + self.image_index[i] + "_01.png.npz")
+            self.image_lists.append(root + '/training' + '/image_2/' + self.image_name[i] + ".png")
+            self.calib_lists.append(root + '/training' + '/calib/' + self.image_name[i] + ".txt")
+            self.depth_list.append(root + '/training' + '/depth/' + self.image_name[i] + ".npz")
+            self.pseudo_pc_list.append(root + '/training' + '/pseudo_pc/' + self.image_name[i] + ".npz")
+        self.ids = list(range(number_image))
         self.transforms = transforms
-        self.id_to_img_map = self.image_index
+        # self.id_to_img_map = self.image_name
 
         self.category_id_to_label_name = {
-            # 1: "Car",
+            1: "Car",
             # 2: "DontCare",
             # 3: "DontCare",
             # 4: "DontCare",
@@ -45,30 +49,46 @@ class KITTIDataset(data.Dataset):
             # 6: "DontCare",
             # 7: "DontCare",
             # 8: "DontCare",
-            1: "Pedestrian",
-            2: "Cyclist",
-            3: "Car",
-            4: "DontCare",
-            5: "DontCare",
-            6: "DontCare",
-            7: "DontCare",
-            8: "DontCare",
+            # 1: "Pedestrian",
+            # 2: "Cyclist",
+            # 3: "Car",
+            # 4: "DontCare",
+            # 5: "DontCare",
+            # 6: "DontCare",
+            # 7: "DontCare",
+            # 8: "DontCare",
         }
         self.label_name_to_category_id = {
-            "Pedestrian": 1,
-            "Cyclist": 2,
-            "Car": 3,
+            # "Pedestrian": 1,
+            # "Cyclist": 2,
+            # "Car": 3,
+            "Car": 1,
         }
-        # cache_file = os.path.join(root, 'typical_dimension_gt.pkl')
-        # with open(cache_file, 'wb') as fid:
-        #     cPickle.dump(self.typical_dimension, fid)
+        # cache_file = os.path.join(root, 'car_typical_dimension_gt.pkl')
+        # with open(cache_file, 'wb') as f:
+        #     cPickle.dump(self.typical_dimension, f)
         # print('wrote typical dimension gt to {}'.format(cache_file))
 
         # TODO implement remove_images_without_annotations:
-        if remove_images_without_annotations:
-            pass
+        # filter images without detection annotations
+        # if remove_images_without_annotations:
+        # if True:
+        #     self.ids = []
+        #     for i in range(number_image):
+        #         if len(self.boxes_list[i]) > 0:
+        #             self.ids.append(i)
 
-    def __getitem__(self, idx):
+        if remove_images_without_annotations:
+            self.ids = [
+                img_id
+                for img_id in self.ids
+                if len(self.boxes_list[img_id]) > 0
+            ]
+
+        self.id_to_img_map = {k: v for k, v in enumerate(self.ids)}
+
+    def __getitem__(self, index):
+        idx = self.id_to_img_map[index]
         img = Image.open(self.image_lists[idx]).convert("RGB")
         boxes = self.boxes_list[idx]
         boxes = torch.as_tensor(boxes).reshape(-1, 4)
@@ -85,7 +105,6 @@ class KITTIDataset(data.Dataset):
 
         alphas = self.alphas_list[idx]
         alphas = torch.tensor(alphas)
-        # num_instances = alphas.shape[0]
         target.add_field("alphas", alphas)
 
         # depth = self.image_index[idx]
@@ -107,21 +126,17 @@ class KITTIDataset(data.Dataset):
         # depths = torch.tensor(depths)
         # target.add_field("depth", depths)
 
-        # TODO clip
         target = target.clip_to_image(remove_empty=True)
-        # dummy target
-        # w, h = img.size
-        # target = BoxList([[0, 0, w, h]], img.size, mode="xyxy")
 
         if self.transforms is not None:
             img, target = self.transforms(img, target)
 
-        img_original_idx = self.id_to_img_map[idx]
+        img_original_idx = self.image_name[idx]
 
-        return img, target, idx, img_original_idx
+        return img, target, index, img_original_idx
 
     def __len__(self):
-        return len(self.image_lists)
+        return len(self.ids)
 
     def get_alpha(self, calib_lists, boxes_list):
         alpha_list = []
@@ -141,14 +156,12 @@ class KITTIDataset(data.Dataset):
                 alpha_list.append(np.arctan2(x - cx, fx))
         return alpha_list
 
-
-
-
-    def get_img_info(self, idx):
+    def get_img_info(self, index):
         """
         Return the image dimensions for the image, without
         loading and pre-processing it
         """
+        idx = self.id_to_img_map[index]
         img = Image.open(self.image_lists[idx]).convert("RGB")
         width, height = img.size
         return {"height": height, "width": width}
@@ -165,7 +178,7 @@ class KITTIDataset(data.Dataset):
         :param ann_file:
         :return:
         '''
-        image_original_index = {}
+        image_name = {}
         labels = {}
         boxes_list = {}
         boxes_3d_list = {}
@@ -175,13 +188,13 @@ class KITTIDataset(data.Dataset):
             with open(ann_file, 'rb') as file:
                 roidb = cPickle.load(file)
                 for roi in roidb:
-                    image_original_index[index] = roi['image_original_index']
+                    image_name[index] = roi['image_original_index']
                     labels[index] = roi['label']
                     boxes_list[index] = roi['boxes']
                     boxes_3d_list[index] = roi['boxes_3d']
                     alphas_list[index] = roi['alphas']
                     index = index + 1
-        return image_original_index, labels, boxes_list, boxes_3d_list, alphas_list
+        return image_name, labels, boxes_list, boxes_3d_list, alphas_list
 
     @staticmethod
     def get_typical_dimension(label_list, boxes_3d_list):
@@ -200,6 +213,3 @@ class KITTIDataset(data.Dataset):
             result[k] = v / categories[k]
 
         return result  # lhw
-
-
-
