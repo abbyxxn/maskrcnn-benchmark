@@ -29,6 +29,7 @@ class FastRCNNPredictor(nn.Module):
         bbox_pred = self.bbox_pred(x)
         return cls_logit, bbox_pred
 
+
 class RotationConfidencePredictor(nn.Module):
     def __init__(self, cfg):
         super(RotationConfidencePredictor, self).__init__()

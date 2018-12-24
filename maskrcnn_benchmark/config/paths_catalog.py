@@ -61,12 +61,12 @@ class DatasetCatalog(object):
         "kitti_3d_train": (
             "kitti/object",
             # "kitti/object/kitti_train_car_gt_roidb.pkl",
-            "kitti/object/pkl/kitti_train_all_gt_roidb.pkl",
+            "kitti/object/pkl/kitti_train_car_gt_roidb.pkl",
         ),
         "kitti_3d_val": (
             "kitti/object",
             # "kitti/object/kitti_val_car_gt_roidb.pkl",
-            "kitti/object/pkl/kitti_val_all_gt_roidb.pkl",
+            "kitti/object/pkl/kitti_val_car_gt_roidb.pkl",
         ),
         "kitti_2d_val_easy": (
             "kitti/object/training/image_2",
@@ -99,7 +99,7 @@ class DatasetCatalog(object):
                 args=args,
             )
         else:
-        #elif "coco" in name:
+            # elif "coco" in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(

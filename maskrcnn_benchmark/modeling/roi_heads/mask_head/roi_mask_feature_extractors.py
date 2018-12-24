@@ -2,9 +2,9 @@
 from torch import nn
 from torch.nn import functional as F
 
-from ..box_head.roi_box_feature_extractors import ResNet50Conv5ROIFeatureExtractor
-from maskrcnn_benchmark.modeling.poolers import Pooler
 from maskrcnn_benchmark.layers import Conv2d
+from maskrcnn_benchmark.modeling.poolers import Pooler
+from ..box_head.roi_box_feature_extractors import ResNet50Conv5ROIFeatureExtractor
 
 
 class MaskRCNNFPNFeatureExtractor(nn.Module):

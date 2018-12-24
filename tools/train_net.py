@@ -141,6 +141,8 @@ def main():
     args.distributed = num_gpus > 1
 
     if args.distributed:
+        # os.environ['MASTER_ADDR'] = '127.0.0.1'
+        # os.environ['MASTER_PORT'] = '29500'
         torch.cuda.set_device(args.local_rank)
         torch.distributed.deprecated.init_process_group(
             backend="nccl", init_method="env://"

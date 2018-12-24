@@ -19,7 +19,7 @@ class PostProcessor(nn.Module):
     """
 
     def __init__(
-        self, box3d_coder=None, orientation_coder=None
+            self, box3d_coder=None, orientation_coder=None
     ):
         """
         Arguments:
@@ -94,7 +94,7 @@ class PostProcessor(nn.Module):
             bbox.add_field("alphas", alphas)
             results.append(bbox)
 
-        return results
+        return results  # ry-hwlxyz
         # num_classes = box3d_dim_regression.shape[1] / 3
         # proposals = self.box_coder.decode(
         #     box_regression.view(sum(boxes_per_image), -1), concat_boxes
@@ -114,8 +114,9 @@ class PostProcessor(nn.Module):
         #     boxlist = self.filter_results(boxlist, num_classes)
         #     results.append(boxlist)
         # return results
-       # class_logits, box_regression = x
-       # class_prob = F.softmax(class_logits, -1)
+
+    # class_logits, box_regression = x
+    # class_prob = F.softmax(class_logits, -1)
 
     def prepare_boxlist(self, boxes, scores, image_shape):
         """
@@ -153,7 +154,7 @@ class PostProcessor(nn.Module):
         for j in range(1, num_classes):
             inds = inds_all[:, j].nonzero().squeeze(1)
             scores_j = scores[inds, j]
-            boxes_j = boxes[inds, j * 4 : (j + 1) * 4]
+            boxes_j = boxes[inds, j * 4: (j + 1) * 4]
             boxlist_for_class = BoxList(boxes_j, boxlist.size, mode="xyxy")
             boxlist_for_class.add_field("scores", scores_j)
             boxlist_for_class = boxlist_nms(

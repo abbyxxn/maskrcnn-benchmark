@@ -2,14 +2,16 @@
 import datetime
 import logging
 import os
+import socket
 import tempfile
 import time
 from collections import OrderedDict
+from datetime import datetime as dt
 
 import torch
 from tqdm import tqdm
 
-from maskrcnn_benchmark.kitti_object_eval_python.evaluate import evaluate
+from maskrcnn_benchmark.kitti_vis import vis_2d_boxes_list, read_img
 from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
@@ -19,12 +21,26 @@ from ..utils.comm import scatter_gather
 from ..utils.comm import synchronize
 
 
+def get_run_name():
+    """ A unique name for each run """
+    return dt.now().strftime(
+        '%b%d-%H-%M-%S') + '_' + socket.gethostname()
+
+
 def compute_on_dataset(model, data_loader, device):
     model.eval()
     results_dict = {}
     cpu_device = torch.device("cpu")
     for i, batch in tqdm(enumerate(data_loader)):
         images, targets, image_ids = batch
+        # im0 = images.tensors[0, ...]
+        # im0 = transforms.functional.to_pil_image(im0)
+        # im0 = numpy.asarray(im0)
+        # boxes = targets[0].convert('xyxy')
+        # gt_boxes = boxes.bbox.tolist()
+        # img2 = vis_2d_boxes_list(im0, gt_boxes)
+        # plt_show(img2)
+
         images = images.to(device)
         with torch.no_grad():
             output = model(images)
@@ -32,55 +48,110 @@ def compute_on_dataset(model, data_loader, device):
         results_dict.update(
             {img_id: result for img_id, result in zip(image_ids, output)}
         )
+        # TODO remove
+        # if i == 100:
+        #     break
     return results_dict
 
 
 def prepare_for_bbox3d_detection(predictions, dataset, output_folder):
     # assert isinstance(dataset, COCODataset)
-    if output_folder:
-        output_folder = os.path.join(output_folder, "bbox3d_result")
-        mkdir(output_folder)
+    # if output_folder:
+    #     output_folder = os.path.join(output_folder, "bbox3d_result")
+    #     mkdir(output_folder)
     # bbox3d_results = []
+    count = 0
     for image_id, prediction in enumerate(predictions):
         # TODO image_id is what
-        original_id = dataset.id_to_img_map[image_id]
+        count = count + 1
+        print(count)
+        idx = dataset.id_to_img_map[image_id]
+        original_id = dataset.image_name[idx]
         if len(prediction) == 0:
             continue
-        bbox3d_result_path = os.path.join(output_folder, original_id + ".txt")
-        with open(bbox3d_result_path, 'w') as box3d:
-            # TODO replace with get_img_info?
-            # image_width = dataset.coco.imgs[original_id]["width"]
-            # image_height = dataset.coco.imgs[original_id]["height"]
-            image_width = dataset.get_img_info(image_id)["width"]
-            image_height = dataset.get_img_info(image_id)["height"]
-            prediction = prediction.resize((image_width, image_height))
-            prediction = prediction.convert("xywh")
+        # bbox3d_result_path = os.path.join(output_folder, original_id + ".txt")
 
-            boxes = prediction.bbox.tolist()
-            scores = prediction.get_field("scores").tolist()
-            labels = prediction.get_field("labels").tolist()
-            boxes_3d = prediction.get_field("boxes_3d").bbox_3d.tolist()
-            alphas = prediction.get_field("alphas").tolist()
+        # with open(bbox3d_result_path, 'w') as box3d:
+        # TODO replace with get_img_info?
+        # image_width = dataset.coco.imgs[original_id]["width"]
+        # image_height = dataset.coco.imgs[original_id]["height"]
+        image_size = dataset.get_img_info(image_id)
+        # image_width = dataset.get_img_info(image_id)["width"]
+        # image_height = dataset.get_img_info(image_id)["height"]
+        image_width = image_size["width"]
+        image_height = image_size["height"]
+        # TODO resize
+        # prediction = prediction.resize((image_width, image_height))
+        # prediction = prediction.convert("xywh")
+        prediction = prediction.convert("xyxy")
 
-            # mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
-            mapped_labels = [dataset.category_id_to_label_name[i] for i in labels]
+        boxes = prediction.bbox.tolist()
+        scores = prediction.get_field("scores").tolist()
+        labels = prediction.get_field("labels").tolist()
+        boxes_3d = prediction.get_field("boxes_3d").bbox_3d.tolist()
+        alphas = prediction.get_field("alphas").tolist()
 
-            for k, box in enumerate(boxes):
-                line = [mapped_labels[k], -1, -1, alphas[k], box[0], box[1], box[2], box[3], boxes_3d[k][1],
-                        boxes_3d[k][2], boxes_3d[k][3], boxes_3d[k][4], boxes_3d[k][5], boxes_3d[k][6], boxes_3d[k][0],
-                        scores[k]]
-                line = ' '.join([str(item) for item in line]) + '\n'
-                box3d.write(line)
+        # mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
+        # mapped_labels = [dataset.category_id_to_label_name[i] for i in labels]
 
-    label_path = dataset.root + "/training/label_2"
-    result_path = output_folder
-    label_split_file_path = dataset.root + "/ImageSets/val.txt"
-    evaluate(label_path, result_path, label_split_file_path, current_class=0, coco=False, score_thresh=-1)
+        save_kitti_3d_result(boxes, original_id, scores, output_folder, dataset, alphas, boxes_3d)
+        # prediction = prediction.convert("xywh")
+        # boxes = prediction.bbox.tolist()
+
+        # for k, box in enumerate(boxes):
+        #     line = [mapped_labels[k], -1, -1, alphas[k], box[0], box[1], box[2], box[3], boxes_3d[k][1],
+        #             boxes_3d[k][2], boxes_3d[k][3], boxes_3d[k][4], boxes_3d[k][5], boxes_3d[k][6], boxes_3d[k][0],
+        #             scores[k]]
+        #     line = ' '.join([str(item) for item in line]) + '\n'
+        #     box3d.write(line)
+
+    # label_path = dataset.root + "/training/label_2"
+    # result_path = output_folder
+    # label_split_file_path = dataset.root + "/ImageSets/val.txt"
+    # evaluate(label_path, result_path, label_split_file_path, current_class=0, coco=False, score_thresh=-1)
 
     return output_folder
 
 
-def prepare_for_coco_detection(predictions, dataset):
+def save_kitti_3d_result(box, original_id, scores, output_folder, dataset, alphas, boxes_3d):
+    TEST_ANGLE_REG = 0
+    TEST_SIZE_REG = 0
+    TEST_XYZ_REG = 0
+    if output_folder:
+        output_folder = os.path.join(output_folder, 'detections', 'data')
+        if not os.path.exists(output_folder):
+            mkdir(output_folder)
+    # image_index = dataset.coco.imgs[original_id]["file_name"].split('.')[0]
+    filename = os.path.join(output_folder, original_id + ".txt")
+    with open(filename, 'wt') as f:
+        if len(box) == 0:
+            return
+        # boxes_3d = box
+        # boxes_3d_v2 = box
+        # if not TEST_ANGLE_REG:
+        #     boxes_3d[:, 0] = -10
+        # if not TEST_SIZE_REG:
+        #     boxes_3d[:, 1:] = -1
+        # if not TEST_XYZ_REG:
+        #     boxes_3d_v2[:, 1:] = 1000
+
+        for k in range(len(box)):
+            height = box[k][3] - box[k][1] + 1
+            if height < 25:
+                continue
+            ry, h, w, l, tx, ty, tz = boxes_3d[k]
+            # ry, l, h, w = -10, -1, -1, -1
+            # alpha = -10
+            alpha = alphas[k]
+            # tx, ty, tz = -1000, -1000, -1000
+            f.write(
+                '{:s} -1 -1 {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}\n' \
+                    .format("Car", \
+                            alpha, box[k][0], box[k][1], box[k][2], box[k][3], \
+                            h, w, l, tx, ty, tz, ry, scores[k]))
+
+
+def prepare_for_coco_detection(predictions, dataset, output_folder):
     # assert isinstance(dataset, COCODataset)
     coco_results = []
     for image_id, prediction in enumerate(predictions):
@@ -104,6 +175,27 @@ def prepare_for_coco_detection(predictions, dataset):
         # mapped_labels = [dataset.contiguous_category_id_to_json_id[i] for i in labels]
         mapped_labels = labels
 
+        prediction = prediction.convert("xyxy")
+        boxes = prediction.bbox.tolist()
+
+        gt_boxes = []
+        gt_ann = dataset.coco.imgToAnns[original_id]
+        for item in gt_ann:
+            gt_boxes.append(item['bbox'])
+        gt_boxes = torch.as_tensor(gt_boxes).reshape(-1, 4)
+        gt_boxes = BoxList(gt_boxes, (image_width, image_height), 'xywh')
+        gt_boxes = gt_boxes.convert('xyxy')
+        gt_boxes = gt_boxes.bbox.tolist()
+
+        image_path = os.path.join(dataset.root, dataset.coco.imgs[original_id]["file_name"])
+        img = read_img(image_path)
+        save_path = os.path.join(output_folder, dataset.coco.imgs[original_id]["file_name"])
+        img2 = vis_2d_boxes_list(img, boxes, gt_boxes, save_path)
+        # plt_show(img2, save_path)
+
+        save_kitti_result(boxes, original_id, scores, output_folder, dataset)
+        prediction = prediction.convert("xywh")
+        boxes = prediction.bbox.tolist()
 
         coco_results.extend(
             [
@@ -117,6 +209,42 @@ def prepare_for_coco_detection(predictions, dataset):
             ]
         )
     return coco_results
+
+
+def save_kitti_result(box, original_id, scores, output_folder, dataset):
+    TEST_ANGLE_REG = 0
+    TEST_SIZE_REG = 0
+    TEST_XYZ_REG = 0
+    if output_folder:
+        output_folder = os.path.join(output_folder, 'detections', 'data')
+        if not os.path.exists(output_folder):
+            mkdir(output_folder)
+    image_index = dataset.coco.imgs[original_id]["file_name"].split('.')[0]
+    filename = os.path.join(output_folder, image_index + ".txt")
+    with open(filename, 'wt') as f:
+        if len(box) == 0:
+            return
+        # boxes_3d = box
+        # boxes_3d_v2 = box
+        # if not TEST_ANGLE_REG:
+        #     boxes_3d[:, 0] = -10
+        # if not TEST_SIZE_REG:
+        #     boxes_3d[:, 1:] = -1
+        # if not TEST_XYZ_REG:
+        #     boxes_3d_v2[:, 1:] = 1000
+
+        for k in range(len(box)):
+            height = box[k][3] - box[k][1] + 1
+            if height < 25:
+                continue
+            ry, l, h, w = -10, -1, -1, -1
+            alpha = -10
+            tx, ty, tz = -1000, -1000, -1000
+            f.write(
+                '{:s} -1 -1 {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}\n' \
+                    .format("Car", \
+                            alpha, box[k][0], box[k][1], box[k][2], box[k][3], \
+                            h, w, l, tx, ty, tz, ry, scores[k]))
 
 
 def prepare_for_coco_segmentation(predictions, dataset):
@@ -172,7 +300,7 @@ def prepare_for_coco_segmentation(predictions, dataset):
 
 # inspired from Detectron
 def evaluate_box_proposals(
-    predictions, dataset, thresholds=None, area="all", limit=None
+        predictions, dataset, thresholds=None, area="all", limit=None
 ):
     """Evaluate detection proposal recall metrics. This function is a much
     faster alternative to the official COCO API recall evaluation code. However,
@@ -288,7 +416,7 @@ def evaluate_box_proposals(
 
 
 def evaluate_predictions_on_coco(
-    coco_gt, coco_results, json_result_file, iou_type="bbox"
+        coco_gt, coco_results, json_result_file, iou_type="bbox"
 ):
     import json
 
@@ -396,16 +524,16 @@ def check_expected_results(results, expected_results, sigma_tol):
 
 
 def inference(
-    model,
-    data_loader,
-    iou_types=("bbox",),
-    box_only=False,
-    device="cuda",
-    expected_results=(),
-    expected_results_sigma_tol=4,
-    output_folder=None,
+        cfg,
+        model,
+        data_loader,
+        iou_types=("bbox",),
+        box_only=False,
+        device="cuda",
+        expected_results=(),
+        expected_results_sigma_tol=4,
+        output_folder=None,
 ):
-
     # convert to a torch.device for efficiency
     device = torch.device(device)
     num_devices = (
@@ -432,8 +560,16 @@ def inference(
     if not is_main_process():
         return
 
-    if output_folder:
-        torch.save(predictions, os.path.join(output_folder, "predictions.pth"))
+    # config MODEL WEIGHT path expect like that
+    # "/raid/kitti3doutput/e2e_mask_rcnn_R_50_FPN_1x/Dec20-12-13-59_DGX-1-A7_step/model_0002500.pth"
+    cfg_name = cfg.MODEL.WEIGHT.split('/')[-3]
+    model_step = cfg.MODEL.WEIGHT.split('/')[-1].split('.')[0]
+    output_folder = os.path.join(output_folder, cfg_name, model_step)
+    if not os.path.exists(output_folder):
+        mkdir(output_folder)
+
+    # if output_folder:
+    #     torch.save(predictions, os.path.join(output_folder, "predictions.pth"))
 
     if box_only:
         logger.info("Evaluating bbox proposals")
@@ -453,9 +589,9 @@ def inference(
         return
     logger.info("Preparing results for COCO format")
     coco_results = {}
-    if "bbox" in iou_types:
-        logger.info("Preparing bbox results")
-        coco_results["bbox"] = prepare_for_coco_detection(predictions, dataset)
+    # if "bbox" in iou_types:
+    #     logger.info("Preparing bbox results")
+    #     coco_results["bbox"] = prepare_for_coco_detection(predictions, dataset, output_folder)
     if "segm" in iou_types:
         logger.info("Preparing segm results")
         coco_results["segm"] = prepare_for_coco_segmentation(predictions, dataset)
@@ -479,6 +615,5 @@ def inference(
     check_expected_results(results, expected_results, expected_results_sigma_tol)
     if output_folder:
         torch.save(results, os.path.join(output_folder, "coco_results.pth"))
-        
-    return results, coco_results, predictions
 
+    return results, coco_results, predictions

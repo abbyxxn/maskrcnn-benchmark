@@ -1,6 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 from torch import nn
-from torch.nn import functional as F
+
 
 class FastRCNNPredictor(nn.Module):
     def __init__(self, config, pretrained=None):
@@ -42,7 +42,7 @@ class Box3dLocPCPredictor(nn.Module):
                 cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2)
         representation_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_HEAD_DIM
         self.fc6 = nn.Linear(input_size, representation_size)
-        for l in [self.fc6,]:
+        for l in [self.fc6, ]:
             nn.init.kaiming_uniform_(l.weight, a=1)
             nn.init.constant_(l.bias, 0)
         # representation_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_DIMENSION_HEAD_DIM

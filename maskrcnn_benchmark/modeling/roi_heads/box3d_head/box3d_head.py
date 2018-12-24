@@ -18,7 +18,6 @@ from .roi_pc_feature_extractors import make_roi_pc_feature_extractor
 # from .localization_loss import make_roi_box3d_localization_loss_evaluator
 
 
-
 def keep_only_positive_boxes(boxes):
     """
     Given a set of BoxList containing the `labels` field,
@@ -39,6 +38,7 @@ def keep_only_positive_boxes(boxes):
         positive_boxes.append(boxes_per_image[inds])
         positive_inds.append(inds_mask)
     return positive_boxes, positive_inds
+
 
 class ROIBox3DHead(torch.nn.Module):
     """
@@ -119,7 +119,6 @@ class ROIBox3DHead(torch.nn.Module):
             box3d_localization_conv_regression = self.predictor_localization_conv(roi_fusion_feature)
             box3d_localization_pc_regression = self.predictor_localization_pc(pc_features)
 
-
         if not self.training:
             post_processor_list = []
             if self.cfg.MODEL.BOX3D_DIMENSION_ON:
@@ -135,13 +134,14 @@ class ROIBox3DHead(torch.nn.Module):
             result = self.post_processor(post_processor_tuple, proposals)
             return x, result, {}
 
-        loss_box3d_dim, loss_box3d_rot_conf, loss_box3d_rot_reg, loss_box3d_localization = self.loss_evaluator(proposals,
-                                                    box3d_dim_regression=box3d_dim_regression,
-                                                    box3d_rotation_logits=box3d_rotation_logits,
-                                                    box3d_rotation_regression=box3d_rotation_regression,
-                                                    box3d_localization_conv_regression=box3d_localization_conv_regression,
-                                                    box3d_localization_pc_regression=box3d_localization_pc_regression,
-                                                    targets=targets)
+        loss_box3d_dim, loss_box3d_rot_conf, loss_box3d_rot_reg, loss_box3d_localization = self.loss_evaluator(
+            proposals,
+            box3d_dim_regression=box3d_dim_regression,
+            box3d_rotation_logits=box3d_rotation_logits,
+            box3d_rotation_regression=box3d_rotation_regression,
+            box3d_localization_conv_regression=box3d_localization_conv_regression,
+            box3d_localization_pc_regression=box3d_localization_pc_regression,
+            targets=targets)
         # loss_box3d_localization = self.localization_loss_evaluator(proposals,
         #                                                            box3d_localization_conv_regression=box3d_localization_conv_regression,
         #                                                            box3d_localization_pc_regression=box3d_localization_pc_regression,

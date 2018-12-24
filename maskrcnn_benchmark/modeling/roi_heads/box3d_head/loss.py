@@ -138,7 +138,6 @@ class Box3DLossComputation(object):
         rotation_confidence_loss = None
         rotation_regression_loss = None
 
-
         # box3d_dim_regression = cat(box3d_dim_regression, dim=0)
         # device = box3d_dim_regression.device if isinstance(box3d_dim_regression, torch.Tensor) else torch.device("cpu")
         # boxes3d_targets = torch.as_tensor(boxes3d_targets, dtype=torch.float32, device=device)
@@ -160,14 +159,14 @@ class Box3DLossComputation(object):
         # device = box3d_localization_conv_regression.device
         # boxes3d_targets = torch.as_tensor(boxes3d_targets, dtype=torch.float32, device=device)
         box3d_localization_loss = smooth_l1_loss(
-            box3d_localization_conv_regression[index[:, None], map_inds] + box3d_localization_pc_regression[index[:, None], map_inds],
+            box3d_localization_conv_regression[index[:, None], map_inds] + box3d_localization_pc_regression[
+                index[:, None], map_inds],
             boxes3d_targets[:, 4:7],
             size_average=False,
             beta=1,
         )
         box3d_localization_loss = box3d_localization_loss / labels.numel()
         box3d_localization_loss = box3d_localization_loss / 5
-
 
         # box3d_rotation_logits = torch.as_tensor(box3d_rotation_logits, dtype=torch.float32, device=device)
         # box3d_rotation_logits = cat(box3d_rotation_logits, dim=0)
@@ -216,7 +215,7 @@ class OrientationLoss(nn.Module):
         loss = torch.sum(loss, dim=1)
         loss = loss / anchors
         loss = torch.mean(loss)
-        loss = 2 - 2*loss
+        loss = 2 - 2 * loss
         # loss = 2 - 2 * torch.sum(torch.sum(loss, dim=1) / anchors) / y_true.shape[0]
         return loss
 
@@ -231,8 +230,9 @@ def make_roi_box3d_loss_evaluator(cfg):
     bbox3d_reg_weights = cfg.MODEL.ROI_BOX3D_HEAD.BBOX3D_REG_WEIGHTS
     box3d_coder = Box3dCoder(weights=bbox3d_reg_weights)
 
-    orientation_coder = OrientationCoder(cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN, cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_OVERLAP)
+    orientation_coder = OrientationCoder(cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN,
+                                         cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_OVERLAP)
 
     loss_evaluator = Box3DLossComputation(matcher, box3d_coder,
-                                             orientation_coder, cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN)
+                                          orientation_coder, cfg.MODEL.ROI_BOX3D_HEAD.ROTATION_BIN)
     return loss_evaluator

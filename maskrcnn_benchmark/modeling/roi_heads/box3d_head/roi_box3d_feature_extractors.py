@@ -1,10 +1,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 from torch import nn
-from torch.nn import functional as F
 
 from maskrcnn_benchmark.modeling.backbone import resnet
 from maskrcnn_benchmark.modeling.poolers import Pooler
-from maskrcnn_benchmark.layers import Conv2d
 
 
 class ResNet50Conv5ROIFeatureExtractor(nn.Module):
@@ -38,6 +36,7 @@ class ResNet50Conv5ROIFeatureExtractor(nn.Module):
         x = self.pooler(x, proposals)
         x = self.head(x)
         return x
+
 
 # TODO change ResNet50Conv5ROIFeatureExtractor for box3d_feature_extractors
 

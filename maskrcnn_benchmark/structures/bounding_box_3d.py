@@ -21,11 +21,9 @@ class Box3List(object):
     def __init__(self, bbox_3d, image_size, mode="ry-lhwxyz"):
         device = bbox_3d.device if isinstance(bbox_3d, torch.Tensor) else torch.device("cpu")
         bbox_3d = torch.as_tensor(bbox_3d, dtype=torch.float32, device=device)
-        if bbox_3d.ndimension() == 1:
-            bbox_3d = bbox_3d.unsqueeze(0)
         if bbox_3d.ndimension() != 2:
             raise ValueError(
-                "bbox_3d should have 2 dimensions, got {} {}".format(bbox_3d.ndimension(), bbox_3d.size())
+                "bbox_3d should have 2 dimensions, got {} {}".format(bbox_3d.ndimension())
             )
         if bbox_3d.size(-1) != 7:
             raise ValueError(
@@ -53,7 +51,7 @@ class Box3List(object):
             rotation, length, height, width, x, y, z = self.bbox_3d.split(1, dim=-1)
             return rotation, length, height, width, x, y, z
         else:
-            raise RuntimeError("Should not be here")
+            raise RuntimeError("Only ry-lhwxyz mode implemented")
 
     def resize(self, size, *args, **kwargs):
         """

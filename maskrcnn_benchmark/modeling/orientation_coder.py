@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 PI = 3.14159
 
+
 class OrientationCoder(object):
     """
     This class encodes and decodes a set of 3d bounding boxes orientation into
@@ -46,7 +47,6 @@ class OrientationCoder(object):
             confidences[i, :] = confidence
         return confidences, orientations
 
-
     def angle_from_multibin(angle_conf, angle_loc, overlap):
         num_bins = angle_conf.shape[1]
         bins = np.zeros((num_bins, 2), dtype=np.float32)
@@ -80,7 +80,7 @@ class OrientationCoder(object):
 
         l_index = int(alpha / wedge)
         r_index = l_index + 1
-      #  r_index = r_index % self.num_bins
+        #  r_index = r_index % self.num_bins
 
         if (alpha - l_index * wedge) < wedge / 2 * (1 + self.overlap / 2):
             anchors.append([l_index, alpha - l_index * wedge])

@@ -44,7 +44,7 @@ class RotationRegressionPredictor(nn.Module):
         #     nn.init.kaiming_uniform_(l.weight, a=1)
         #     nn.init.constant_(l.bias, 0)
         input_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_HEAD_DIM
-        self.bbox3d_rotation_regression_pred = nn.Linear(input_size, self.num_bins*2)
+        self.bbox3d_rotation_regression_pred = nn.Linear(input_size, self.num_bins * 2)
         nn.init.normal_(self.bbox3d_rotation_regression_pred.weight, std=0.001)
         for l in [self.bbox3d_rotation_regression_pred, ]:
             nn.init.constant_(l.bias, 0)

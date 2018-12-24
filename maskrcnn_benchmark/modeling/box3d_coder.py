@@ -32,7 +32,7 @@ class Box3dCoder(object):
         """
         device = reference_boxes.device
 
-        cache_file = os.path.join('/home/jiamingsun/raid/dataset/kitti/object', 'typical_dimension_train_gt.pkl')
+        cache_file = os.path.join('/home/abby/datasets/kitti/object', 'car_typical_dimension_gt.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as file:
                 typical_dimension = cPickle.load(file)
@@ -86,7 +86,7 @@ class Box3dCoder(object):
             boxes (Tensor): reference boxes. proposal
         """
         device = reference_boxes_3d.device
-        cache_file = os.path.join('/home/jiamingsun/raid/dataset/kitti/object', 'typical_dimension_train_gt.pkl')
+        cache_file = os.path.join('/home/abby/datasets/kitti/object', 'car_typical_dimension_gt.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as file:
                 typical_dimension = cPickle.load(file)

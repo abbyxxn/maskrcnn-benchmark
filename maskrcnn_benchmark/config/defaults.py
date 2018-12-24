@@ -35,7 +35,6 @@ _C.MODEL.META_ARCHITECTURE = "GeneralizedRCNN"
 # path
 _C.MODEL.WEIGHT = ""
 
-
 # -----------------------------------------------------------------------------
 # INPUT
 # -----------------------------------------------------------------------------
@@ -54,7 +53,6 @@ _C.INPUT.PIXEL_MEAN = [102.9801, 115.9465, 122.7717]
 _C.INPUT.PIXEL_STD = [1., 1., 1.]
 # Convert image to BGR format (for Caffe2 models), in range 0-255
 _C.INPUT.TO_BGR255 = True
-
 
 # -----------------------------------------------------------------------------
 # Dataset
@@ -77,7 +75,7 @@ _C.DATASETS.LIDAR_COORD = []
 # -----------------------------------------------------------------------------
 _C.DATALOADER = CN()
 # Number of data loading threads
-_C.DATALOADER.NUM_WORKERS = 1
+_C.DATALOADER.NUM_WORKERS = 0
 # If > 0, this enforces that each collated batch should have a size divisible
 # by SIZE_DIVISIBILITY
 _C.DATALOADER.SIZE_DIVISIBILITY = 0
@@ -100,7 +98,6 @@ _C.MODEL.BACKBONE.CONV_BODY = "R-50-C4"
 # Add StopGrad at a specified stage so the bottom layers are frozen
 _C.MODEL.BACKBONE.FREEZE_CONV_BODY_AT = 2
 _C.MODEL.BACKBONE.OUT_CHANNELS = 256 * 4
-
 
 # ---------------------------------------------------------------------------- #
 # RPN options
@@ -146,7 +143,6 @@ _C.MODEL.RPN.MIN_SIZE = 0
 _C.MODEL.RPN.FPN_POST_NMS_TOP_N_TRAIN = 2000
 _C.MODEL.RPN.FPN_POST_NMS_TOP_N_TEST = 2000
 
-
 # ---------------------------------------------------------------------------- #
 # ROI HEADS options
 # ---------------------------------------------------------------------------- #
@@ -181,17 +177,15 @@ _C.MODEL.ROI_HEADS.NMS = 0.5
 # established for the COCO dataset)
 _C.MODEL.ROI_HEADS.DETECTIONS_PER_IMG = 100
 
-
 _C.MODEL.ROI_BOX_HEAD = CN()
 _C.MODEL.ROI_BOX_HEAD.FEATURE_EXTRACTOR = "ResNet50Conv5ROIFeatureExtractor"
 _C.MODEL.ROI_BOX_HEAD.PREDICTOR = "FastRCNNPredictor"
 _C.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION = 14
 _C.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO = 0
 _C.MODEL.ROI_BOX_HEAD.POOLER_SCALES = (1.0 / 16,)
-_C.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 9
+_C.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 2
 # Hidden layer dimension when using an MLP for the RoI box head
 _C.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM = 1024
-
 
 _C.MODEL.ROI_MASK_HEAD = CN()
 _C.MODEL.ROI_MASK_HEAD.FEATURE_EXTRACTOR = "ResNet50Conv5ROIFeatureExtractor"
@@ -282,7 +276,7 @@ _C.SOLVER.CHECKPOINT_PERIOD = 2500
 # Number of images per batch
 # This is global, so if we have 8 GPUs and IMS_PER_BATCH = 16, each GPU will
 # see 2 images per batch
-_C.SOLVER.IMS_PER_BATCH = 16
+_C.SOLVER.IMS_PER_BATCH = 1
 
 # ---------------------------------------------------------------------------- #
 # Specific test options
@@ -293,8 +287,14 @@ _C.TEST.EXPECTED_RESULTS_SIGMA_TOL = 4
 # Number of images per batch
 # This is global, so if we have 8 GPUs and IMS_PER_BATCH = 16, each GPU will
 # see 2 images per batch
-_C.TEST.IMS_PER_BATCH = 8
+_C.TEST.IMS_PER_BATCH = 1
 
+# ---------------------------------------------------------------------------- #
+# Visualization
+# ---------------------------------------------------------------------------- #
+_C.VIS = CN()
+_C.VIS.USE_TENSORBOARD = False
+_C.VIS.TB_LOG_PERIOD = 20
 
 # ---------------------------------------------------------------------------- #
 # Misc options
@@ -302,3 +302,20 @@ _C.TEST.IMS_PER_BATCH = 8
 _C.OUTPUT_DIR = "/home/abby/Repositories/maskrcnn-benchmark/output"
 
 _C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")
+
+# config.network.SIZE_3D = np.array([[5.37, 2.12, 2.26]])
+# config.dataset.MIN_DISPARITY = 0.1
+# config.dataset.MAX_DISPARITY = 200
+# config.dataset.DISPARITY_SCALE = 1.0
+# config.TRAIN.BBOX_REGRESSION_THRESH = 0.5
+# config.TRAIN.BBOX_WEIGHTS = np.array([1.0, 1.0, 1.0, 1.0])
+# config.TRAIN.ANGLE_WEIGHTS = np.array([1.0, 1.0])
+# config.TRAIN.MULTI_WEIGHT = 1.0
+# config.TRAIN.SIZE_WEIGHTS = np.array([1.0, 1.0, 1.0])
+# config.TRAIN.XYZ_WEIGHTS = np.array([1.0, 1.0, 1.0])
+# config.TRAIN.ANGLE_REG = False
+# config.TRAIN.SOFT_ANGLE = False
+# config.TRAIN.SIZE_REG = False
+# config.TRAIN.XYZ_REG = False
+# config.TRAIN.XYZ_NORMALIZATION = 'none'
+# config.TRAIN.TASK_WEIGHTS = (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)

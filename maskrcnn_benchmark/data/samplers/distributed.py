@@ -3,6 +3,7 @@
 # with a modification in the import to use the deprecated backend
 # FIXME remove this once c10d fixes the bug it has
 import math
+
 import torch
 import torch.distributed.deprecated as dist
 from torch.utils.data.sampler import Sampler
@@ -55,7 +56,7 @@ class DistributedSampler(Sampler):
 
         # subsample
         offset = self.num_samples * self.rank
-        indices = indices[offset : offset + self.num_samples]
+        indices = indices[offset: offset + self.num_samples]
         assert len(indices) == self.num_samples
 
         return iter(indices)

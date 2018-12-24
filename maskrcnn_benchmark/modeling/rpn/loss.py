@@ -100,7 +100,7 @@ class RPNLossComputation(object):
         # all feature levels concatenated, so we keep the same representation
         # for the objectness and the box_regression
         for objectness_per_level, box_regression_per_level in zip(
-            objectness, box_regression
+                objectness, box_regression
         ):
             N, A, H, W = objectness_per_level.shape
             objectness_per_level = objectness_per_level.permute(0, 2, 3, 1).reshape(

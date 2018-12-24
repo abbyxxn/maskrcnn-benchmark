@@ -36,13 +36,12 @@ class Box3DPredictor(nn.Module):
         super(Box3DPredictor, self).__init__()
 
         input_size = (cfg.MODEL.BACKBONE.OUT_CHANNELS + cfg.MODEL.ROI_BOX3D_HEAD.POINTCLOUD_OUT_CHANNELS) * (
-                    cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2)
+                cfg.MODEL.ROI_BOX3D_HEAD.POOLER_RESOLUTION ** 2)
         representation_size = cfg.MODEL.ROI_BOX3D_HEAD.PREDICTORS_HEAD_DIM
         self.fc6 = nn.Linear(input_size, representation_size)
         self.fc7 = nn.Linear(representation_size, representation_size)
 
         for l in [self.fc6, self.fc7]:
-
             nn.init.kaiming_uniform_(l.weight, a=1)
             nn.init.constant_(l.bias, 0)
 

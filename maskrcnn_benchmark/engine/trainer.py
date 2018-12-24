@@ -77,7 +77,7 @@ def do_train(
         tflogger.update(loss=losses_reduced, **loss_dict_reduced)
         optimizer.zero_grad()
         losses.backward()
-        torch.nn.utils.clip_grad_norm(model.parameters(), 40)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 40)
         optimizer.step()
 
         batch_time = time.time() - end
