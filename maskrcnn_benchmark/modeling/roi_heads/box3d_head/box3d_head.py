@@ -1,4 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+import os
+
 import numpy as np
 import torch
 
@@ -6,16 +8,13 @@ from maskrcnn_benchmark.structures.bounding_box import BoxList
 from .inference import make_roi_box3d_post_processor
 from .loss import make_roi_box3d_loss_evaluator
 from .roi_box3d_feature_extractors import make_roi_box3d_feature_extractor
+from .roi_box3d_pc_feature_extractors import make_roi_pc_feature_extractor
 from .roi_box3d_predictors import make_roi_box3d_predictor
-from .roi_box3d_predictors_dimension import make_roi_box3d_predictor_dimension
-from .roi_box3d_predictors_localization_conv import make_roi_box3d_predictor_localization_conv
-from .roi_box3d_predictors_localization_pc import make_roi_box3d_predictor_localization_pc
-from .roi_box3d_predictors_rotation_confidences import make_roi_box3d_predictor_rotation_confidences
-from .roi_box3d_predictors_rotation_regression import make_roi_box3d_predictor_rotation_regression
-from .roi_pc_feature_extractors import make_roi_pc_feature_extractor
-
-
-# from .localization_loss import make_roi_box3d_localization_loss_evaluator
+from .roi_box3d_predictors_dim import make_roi_box3d_predictor_dimension
+from .roi_box3d_predictors_loc_pc import make_roi_box3d_predictor_localization_pc
+from .roi_box3d_predictors_loc_roi import make_roi_box3d_predictor_localization_conv
+from .roi_box3d_predictors_rot_conf import make_roi_box3d_predictor_rotation_confidences
+from .roi_box3d_predictors_rot_reg import make_roi_box3d_predictor_rotation_regression
 
 
 def keep_only_positive_boxes(boxes):
@@ -30,7 +29,6 @@ def keep_only_positive_boxes(boxes):
     assert boxes[0].has_field("labels")
     positive_boxes = []
     positive_inds = []
-    num_boxes = 0
     for boxes_per_image in boxes:
         labels = boxes_per_image.get_field("labels")
         inds_mask = labels > 0
@@ -59,7 +57,6 @@ class ROIBox3DHead(torch.nn.Module):
         self.predictor_localization_pc = make_roi_box3d_predictor_localization_pc(cfg)
         self.post_processor = make_roi_box3d_post_processor(cfg)
         self.loss_evaluator = make_roi_box3d_loss_evaluator(cfg)
-        # self.localization_loss_evaluator = make_roi_box3d_localization_loss_evaluator(cfg)
 
     def forward(self, features, proposals, targets=None, img_original_ids=None):
         """
@@ -88,48 +85,20 @@ class ROIBox3DHead(torch.nn.Module):
             x = self.feature_extractor(features, proposals)
 
         pc_features = self.pc_feature_prepare(proposals, img_original_ids)
-        # for proposal_per_image, target_per_image in zip(proposals, targets):
-        #     depth = target_per_image.extra_fields["depth"]
-        #     pc_feature = self.pc_feature_extractor(proposal_per_image, depth)
-        #     pc_features.append(pc_feature)
-
         pc_features = torch.cat(pc_features)
         fusion_feature = torch.cat((x, pc_features), 1)
-        # TODO check cat right
 
         roi_fusion_feature = self.predictor(fusion_feature)
 
-        box3d_dim_regression = None
-        box3d_rotation_logits = None
-        box3d_rotation_regression = None
-        box3d_localization_conv_regression = None
-        box3d_localization_pc_regression = None
-
-        if self.cfg.MODEL.BOX3D_DIMENSION_ON:
-            box3d_dim_regression = self.predictor_dimension(roi_fusion_feature)
-
-        if self.cfg.MODEL.BOX3D_ROTATION_CONFIDENCES_ON:
-            box3d_rotation_logits = self.predictor_rotation_confidences(roi_fusion_feature)
-
-        if self.cfg.MODEL.BOX3D_ROTATION_REGRESSION_ON:
-            box3d_rotation_regression = self.predictor_rotation_angle_sin_add_cos(roi_fusion_feature)
-        # TODO optimizer split train box3d head
-
-        if self.cfg.MODEL.BOX3D_LOCALIZATION_ON:
-            box3d_localization_conv_regression = self.predictor_localization_conv(roi_fusion_feature)
-            box3d_localization_pc_regression = self.predictor_localization_pc(pc_features)
+        box3d_dim_regression = self.predictor_dimension(roi_fusion_feature)
+        box3d_rotation_logits = self.predictor_rotation_confidences(roi_fusion_feature)
+        box3d_rotation_regression = self.predictor_rotation_angle_sin_add_cos(roi_fusion_feature)
+        box3d_localization_conv_regression = self.predictor_localization_conv(roi_fusion_feature)
+        box3d_localization_pc_regression = self.predictor_localization_pc(pc_features)
 
         if not self.training:
-            post_processor_list = []
-            if self.cfg.MODEL.BOX3D_DIMENSION_ON:
-                post_processor_list.append(box3d_dim_regression)
-            if self.cfg.MODEL.BOX3D_ROTATION_CONFIDENCES_ON:
-                post_processor_list.append(box3d_rotation_logits)
-            if self.cfg.MODEL.BOX3D_ROTATION_REGRESSION_ON:
-                post_processor_list.append(box3d_rotation_regression)
-            if self.cfg.MODEL.BOX3D_LOCALIZATION_ON:
-                post_processor_list.append(box3d_localization_conv_regression)
-                post_processor_list.append(box3d_localization_pc_regression)
+            post_processor_list = [box3d_dim_regression, box3d_rotation_logits, box3d_rotation_regression,
+                                   box3d_localization_conv_regression, box3d_localization_pc_regression]
             post_processor_tuple = tuple(post_processor_list)
             result = self.post_processor(post_processor_tuple, proposals)
             return x, result, {}
@@ -142,43 +111,29 @@ class ROIBox3DHead(torch.nn.Module):
             box3d_localization_conv_regression=box3d_localization_conv_regression,
             box3d_localization_pc_regression=box3d_localization_pc_regression,
             targets=targets)
-        # loss_box3d_localization = self.localization_loss_evaluator(proposals,
-        #                                                            box3d_localization_conv_regression=box3d_localization_conv_regression,
-        #                                                            box3d_localization_pc_regression=box3d_localization_pc_regression,
-        #                                                            targets=targets)
 
-        loss_dict = {}
-        if self.cfg.MODEL.BOX3D_DIMENSION_ON:
-            loss_dict["loss_box3d_dim"] = loss_box3d_dim
-        if self.cfg.MODEL.BOX3D_ROTATION_CONFIDENCES_ON:
-            loss_dict["loss_box3d_rot_conf"] = loss_box3d_rot_conf
-        if self.cfg.MODEL.BOX3D_ROTATION_REGRESSION_ON:
-            loss_dict["loss_box3d_rot_reg"] = loss_box3d_rot_reg
-        if self.cfg.MODEL.BOX3D_LOCALIZATION_ON:
-            loss_dict["loss_box3d_loc_reg"] = loss_box3d_localization
+        loss_dict = dict()
+        loss_dict["loss_box3d_dim"] = loss_box3d_dim
+        loss_dict["loss_box3d_rot_conf"] = loss_box3d_rot_conf
+        loss_dict["loss_box3d_rot_reg"] = loss_box3d_rot_reg
+        loss_dict["loss_box3d_loc_reg"] = loss_box3d_localization
 
         return x, all_proposals, loss_dict
 
     def pc_feature_prepare(self, proposals, img_original_ids):
-        pc_features = []
-        PTH = "/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object/training/depth/"
+        pseudo_pc_features = []
+        PTH = "/home/abby/Repositories/maskrcnn-benchmark/datasets/kitti/object/training/pseudo_pc"
         for proposal_per_image, img_ori_id in zip(proposals, img_original_ids):
-            depth_path = PTH + img_ori_id + "_01.png.npz"
-            d = np.load(depth_path)
-            depth = d['depths']
-            # depth = np.transpose(d['depths'])
-            # assert depth.shape[0] == proposal_per_image.size[1], "{}, {}".format(
-            #     depth.shape, proposal_per_image.size
-            # )
-            # device = proposal_per_image.bbox.device
-            # num_instances = proposal_per_image.bbox.shape[0]
-            # depths = []
-            # for i in range(num_instances):
-            #     depths.append(depth)
-            depth = torch.as_tensor(depth, device=proposal_per_image.bbox.device)
-            pc_feature = self.pc_feature_extractor(proposal_per_image, depth)
-            pc_features.append(pc_feature)
-        return pc_features
+            pseudo_pc_path = os.path.join(PTH, img_ori_id + ".npz")
+            pseudo_pc = np.load(pseudo_pc_path)
+            pseudo_pc = pseudo_pc['pseudo_pc']
+            assert (pseudo_pc.shape[1], pseudo_pc.shape[2] == proposal_per_image.size[1], proposal_per_image.size[0]), \
+                "{}, {}".format(pseudo_pc.shape, proposal_per_image.size)
+            device = proposal_per_image.bbox.device
+            pseudo_pc = torch.as_tensor(pseudo_pc, device=device)
+            pseudo_pc_feature = self.pc_feature_extractor(proposal_per_image, pseudo_pc)
+            pseudo_pc_features.append(pseudo_pc_feature)
+        return pseudo_pc_features
 
 
 def build_roi_box3d_head(cfg):
