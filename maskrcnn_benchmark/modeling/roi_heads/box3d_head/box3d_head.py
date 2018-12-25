@@ -84,10 +84,12 @@ class ROIBox3DHead(torch.nn.Module):
         else:
             x = self.feature_extractor(features, proposals)
 
+        # extract pseudo pc features and concatenate with roi features
         pc_features = self.pc_feature_prepare(proposals, img_original_ids)
         pc_features = torch.cat(pc_features)
         fusion_feature = torch.cat((x, pc_features), 1)
 
+        # two fc for all
         roi_fusion_feature = self.predictor(fusion_feature)
 
         box3d_dim_regression = self.predictor_dimension(roi_fusion_feature)
@@ -96,6 +98,7 @@ class ROIBox3DHead(torch.nn.Module):
         box3d_localization_conv_regression = self.predictor_localization_conv(roi_fusion_feature)
         box3d_localization_pc_regression = self.predictor_localization_pc(pc_features)
 
+        # inference
         if not self.training:
             post_processor_list = [box3d_dim_regression, box3d_rotation_logits, box3d_rotation_regression,
                                    box3d_localization_conv_regression, box3d_localization_pc_regression]
@@ -103,6 +106,7 @@ class ROIBox3DHead(torch.nn.Module):
             result = self.post_processor(post_processor_tuple, proposals)
             return x, result, {}
 
+        # training
         loss_box3d_dim, loss_box3d_rot_conf, loss_box3d_rot_reg, loss_box3d_localization = self.loss_evaluator(
             proposals,
             box3d_dim_regression=box3d_dim_regression,
